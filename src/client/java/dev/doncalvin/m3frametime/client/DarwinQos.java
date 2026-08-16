@@ -5,11 +5,12 @@ import dev.doncalvin.m3frametime.M3FrametimeMod;
 import java.lang.reflect.Method;
 
 /**
- * Native macOS Darwin Mach kernel scheduler binding for Apple Silicon M3.
+ * Native macOS Darwin Mach kernel scheduler binding for Apple Silicon (M1/M2/M3/M4).
  * Locks the Minecraft render thread permanently to Performance P-Cores using:
  * 1. pthread_set_qos_class_self_np (QOS_CLASS_USER_INTERACTIVE 0x21)
  * 2. Mach THREAD_AFFINITY_POLICY (tag = 1 -> P-Core cluster L2 cache binding)
  * 3. Mach THREAD_EXTENDED_POLICY (timeshare = 0 -> real-time quantum, zero E-Core demotion)
+ * 4. Mach THREAD_TIME_CONSTRAINT_POLICY (Real-time display presentation deadline guarantee)
  */
 public final class DarwinQos {
 	/** Highest priority; binds thread to Performance P-Cores with active boost. */
@@ -21,6 +22,7 @@ public final class DarwinQos {
 
 	// Mach thread policy constants
 	private static final int THREAD_EXTENDED_POLICY = 1;
+	private static final int THREAD_TIME_CONSTRAINT_POLICY = 2;
 	private static final int THREAD_AFFINITY_POLICY = 4;
 
 	private static boolean initialized;
@@ -110,6 +112,15 @@ public final class DarwinQos {
 				// 2. THREAD_EXTENDED_POLICY (timeshare = 0): Real-time quantum, disables E-Core demotion
 				int[] extended = new int[] { 0 };
 				threadPolicySetMethod.invoke(libcProxy, machPort, THREAD_EXTENDED_POLICY, extended, 1);
+
+				// 3. THREAD_TIME_CONSTRAINT_POLICY: Guarantees 6ms uninterruptible P-Core slice per frame
+				int[] timeConstraint = new int[] {
+					8_333_333, // period (120 Hz)
+					6_000_000, // computation (6ms guaranteed compute)
+					8_000_000, // constraint (8ms deadline)
+					1          // preemptible
+				};
+				threadPolicySetMethod.invoke(libcProxy, machPort, THREAD_TIME_CONSTRAINT_POLICY, timeConstraint, 4);
 			}
 		} catch (Throwable ignored) {
 		}
