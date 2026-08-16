@@ -16,7 +16,7 @@
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Minecraft-1.0_➔_26.x+_(All_Versions)-blue?style=for-the-badge&logo=minecraft&logoColor=white" alt="Minecraft 1.0 - 26.x+ (All Versions)"></a>
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-Universal_All--Versions-dbb48c?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric Loader"></a>
   <a href="https://apple.com/"><img src="https://img.shields.io/badge/Apple_Silicon-M1_|_M2_|_M3_|_M4-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Silicon M-Series"></a>
-  <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/badge/Release-v1.0.21_All--Versions-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.21"></a>
+  <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/badge/Release-v1.0.22_All--Versions-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.22"></a>
   <a href="https://ko-fi.com/chackrahunter"><img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Ko-fi"></a>
   <a href="https://www.paypal.me/Donsko2007"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal"></a>
   <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/Diagnostics-236_Error_Codes-a855f7?style=for-the-badge&logo=matrix&logoColor=white" alt="236 Diagnostic Codes"></a>
@@ -220,7 +220,7 @@ cd siliconflow
 ./gradlew build
 
 # The compiled artifact is located at:
-# build/libs/siliconflow-1.0.21+all-versions.jar
+# build/libs/siliconflow-1.0.22+all-versions.jar
 ```
 
 <p align="center">

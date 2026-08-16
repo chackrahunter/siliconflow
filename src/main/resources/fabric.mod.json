@@ -10,6 +10,7 @@
 		"sources": "https://github.com/chackrahunter/siliconflow"
 	},
 	"license": "MIT",
+	"icon": "assets/m3-frametime/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": ["dev.doncalvin.m3frametime.M3FrametimeMod"],
