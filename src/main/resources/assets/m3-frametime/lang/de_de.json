@@ -1,0 +1,6 @@
+{
+  "category.m3-frametime": "SiliconFlow (Apple Silicon)",
+  "key.m3-frametime.overlay": "Live-Telemetrie HUD umschalten (F8)",
+  "key.m3-frametime.dashboard": "Silicon Dashboard öffnen (F7)",
+  "text.m3-frametime.dashboard": "SiliconFlow Kontrollzentrum"
+}

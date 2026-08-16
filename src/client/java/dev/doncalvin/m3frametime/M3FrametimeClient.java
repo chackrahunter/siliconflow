@@ -28,6 +28,7 @@ public final class M3FrametimeClient implements ClientModInitializer {
 	private static final String CATEGORY = "category.m3-frametime";
 
 	private static KeyBinding overlayKey;
+	private static KeyBinding dashboardKey;
 	private static boolean appliedGraphicsHints;
 	private static int sodiumBoostRetryTicks;
 
@@ -52,9 +53,21 @@ public final class M3FrametimeClient implements ClientModInitializer {
 			CATEGORY
 		));
 
+		dashboardKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+			"key.m3-frametime.dashboard",
+			InputUtil.Type.KEYSYM,
+			GLFW.GLFW_KEY_F7,
+			CATEGORY
+		));
+
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (overlayKey.wasPressed()) {
 				DebugHud.get().toggle();
+			}
+			while (dashboardKey.wasPressed()) {
+				if (client.currentScreen == null) {
+					client.setScreen(new dev.doncalvin.m3frametime.gui.SiliconDashboardScreen(null));
+				}
 			}
 			RamDiscipline.get().onClientTick();
 

@@ -59,6 +59,14 @@ public final class DebugHud {
 		this.visible = v;
 	}
 
+	public int getLiveFps() {
+		return liveFps > 0 ? liveFps : 60;
+	}
+
+	public double getLiveFrametimeMs() {
+		return liveFtMs > 0.0 ? liveFtMs : 16.6;
+	}
+
 	/** Optional hook from client mixin. */
 	public void onFrameTick() {}
 
@@ -137,11 +145,11 @@ public final class DebugHud {
 
 		// ==========================================
 		// 1. TOP HEADER PILL
-		// [SILICONFLOW: P-CORE] | [v1.0.32 · MC ...] | [HH:MM:SS]
+		// [SILICONFLOW: P-CORE] | [v1.0.33 · MC ...] | [HH:MM:SS]
 		// ==========================================
 		String mcVer = dev.doncalvin.m3frametime.version.VersionDetector.get().getRawVersion();
 		String timeStr = LocalTime.now().format(TIME_FMT);
-		String headerText = "[SILICONFLOW: P-CORE] | [v1.0.32 · MC " + mcVer + "] | [" + timeStr + "]";
+		String headerText = "[SILICONFLOW: P-CORE] | [v1.0.33 · MC " + mcVer + "] | [" + timeStr + "]";
 		int headerW = tr.getWidth(headerText) + 10;
 		int headerH = 13;
 

@@ -32,7 +32,16 @@ loom {
 	}
 }
 
+tasks.withType<org.gradle.jvm.tasks.Jar>().configureEach {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType<AbstractCopyTask>().configureEach {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 tasks.processResources {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	val modVersion = project.version.toString()
 	inputs.property("version", modVersion)
 	filesMatching("fabric.mod.json") {
@@ -52,6 +61,7 @@ java {
 }
 
 tasks.jar {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	from("LICENSE") {
 		rename { "${it}_${base.archivesName.get()}" }
 	}
