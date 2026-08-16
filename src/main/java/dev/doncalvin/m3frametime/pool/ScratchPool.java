@@ -2,7 +2,9 @@ package dev.doncalvin.m3frametime.pool;
 
 import net.minecraft.util.math.BlockPos;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -28,7 +30,11 @@ public final class ScratchPool {
 
 	public final BlockPos.Mutable mutablePos = new BlockPos.Mutable();
 	public final Vector3f vec3f = new Vector3f();
+	public final Vector3f vec3fAux = new Vector3f();
+	public final Vector4f vec4f = new Vector4f();
+	public final Quaternionf quaternionf = new Quaternionf();
 	public final Matrix4f matrix4f = new Matrix4f();
+	public final Matrix4f matrix4fAux = new Matrix4f();
 	public final float[] mat16 = new float[16];
 	public final double[] vec3d = new double[3];
 	public final StringBuilder stringBuilder = new StringBuilder(SB_INITIAL);
@@ -52,6 +58,12 @@ public final class ScratchPool {
 		shrinkBuilder(stringBuilder);
 		shrinkBuilder(logBuilder);
 		soundDirect.clear();
+		quaternionf.identity();
+		matrix4f.identity();
+		matrix4fAux.identity();
+		vec3f.zero();
+		vec3fAux.zero();
+		vec4f.zero();
 	}
 
 	public static void releaseAllEphemeral() {
