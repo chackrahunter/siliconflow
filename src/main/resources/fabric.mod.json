@@ -3,7 +3,7 @@
 	"id": "m3-frametime",
 	"version": "${version}",
 	"name": "SiliconFlow",
-	"description": "SiliconFlow: Native Mach-Kernel & Metal TBDR Low-Level Optimization Engine for Apple Silicon (M1/M2/M3/M4) on Minecraft 1.21.4.",
+	"description": "SiliconFlow: Universal Native Mach-Kernel & Metal TBDR Low-Level Optimization Engine for Apple Silicon (M1/M2/M3/M4) across all Minecraft versions (1.16.5–1.21.4+).",
 	"authors": ["Don-Calvin"],
 	"contact": {
 		"homepage": "https://github.com/chackrahunter/siliconflow",
@@ -23,10 +23,9 @@
 		}
 	],
 	"depends": {
-		"fabricloader": ">=0.16.14",
-		"minecraft": "~1.21.4",
-		"java": ">=21",
-		"fabric-api": "*"
+		"fabricloader": ">=0.14.0",
+		"minecraft": ">=1.16.5",
+		"java": ">=17"
 	},
 	"suggests": {
 		"sodium": "*",
