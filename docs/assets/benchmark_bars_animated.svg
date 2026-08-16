@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" width="100%" height="220">
+  <defs>
+    <linearGradient id="barFlowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#4facfe" />
+    </linearGradient>
+    <linearGradient id="vanillaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#555e68" />
+      <stop offset="100%" stop-color="#768390" />
+    </linearGradient>
+    <filter id="barGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect x="2" y="2" width="796" height="216" rx="14" fill="#080e14" stroke="#00e5ff" stroke-width="1.5" />
+
+  <text x="24" y="28" fill="#8b949e" font-family="monospace" font-size="11" font-weight="bold">COMPARATIVE PERFORMANCE BENCHMARK (APPLE M3 · 8GB UMA)</text>
+
+  <!-- Metric 1: FPS Comparison -->
+  <g transform="translate(24, 45)">
+    <text x="0" y="16" fill="#ffffff" font-family="monospace" font-size="12" font-weight="bold">AVERAGE FRAMERATE (FPS) - HIGHER IS BETTER</text>
+    
+    <!-- Vanilla Bar -->
+    <rect x="0" y="24" width="120" height="18" rx="4" fill="url(#vanillaGrad)" />
+    <text x="130" y="38" fill="#8b949e" font-family="monospace" font-size="11">Vanilla: 120 FPS</text>
+
+    <!-- SiliconFlow Bar (Animated Expansion) -->
+    <rect x="0" y="48" width="540" height="22" rx="4" fill="url(#barFlowGrad)" filter="url(#barGlow)">
+      <animate attributeName="width" values="400;540;510;540" dur="4s" repeatCount="indefinite" />
+    </rect>
+    <text x="550" y="64" fill="#00f2fe" font-family="monospace" font-size="12" font-weight="bold">SiliconFlow: 541 FPS (+350% 🚀)</text>
+  </g>
+
+  <!-- Metric 2: Frametime Comparison -->
+  <g transform="translate(24, 135)">
+    <text x="0" y="16" fill="#ffffff" font-family="monospace" font-size="12" font-weight="bold">FRAME DELIVERY TIME (MS) - LOWER IS BETTER</text>
+    
+    <!-- Vanilla Bar (Slow 17.4 ms) -->
+    <rect x="0" y="24" width="480" height="18" rx="4" fill="#e5534b" opacity="0.85" />
+    <text x="490" y="38" fill="#e5534b" font-family="monospace" font-size="11">Vanilla: 17.4 ms (VSync Stall)</text>
+
+    <!-- SiliconFlow Bar (Ultra-Fast 1.8 ms) -->
+    <rect x="0" y="48" width="70" height="22" rx="4" fill="#38ef7d" filter="url(#barGlow)">
+      <animate attributeName="width" values="50;70;60;70" dur="3s" repeatCount="indefinite" />
+    </rect>
+    <text x="80" y="64" fill="#38ef7d" font-family="monospace" font-size="12" font-weight="bold">SiliconFlow: 1.8 ms (9.6x Faster ⚡)</text>
+  </g>
+</svg>

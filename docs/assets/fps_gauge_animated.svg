@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="100%" height="200">
+  <defs>
+    <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="60%" stop-color="#38ef7d" />
+      <stop offset="100%" stop-color="#ffca28" />
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Container -->
+  <rect x="2" y="2" width="796" height="196" rx="14" fill="#080e14" stroke="#00e5ff" stroke-width="1.5" />
+
+  <!-- Title & Status -->
+  <text x="24" y="28" fill="#8b949e" font-family="monospace" font-size="11" font-weight="bold">SILICONFLOW REAL-TIME TELEMETRY TELEMETRIC DIALS</text>
+  <rect x="670" y="14" width="115" height="20" rx="10" fill="#003b46" stroke="#00f2fe" stroke-width="1">
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  <text x="727" y="28" fill="#00f2fe" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">LIVE ENGINE</text>
+
+  <!-- Gauge 1: FPS Counter -->
+  <g transform="translate(140, 115)">
+    <!-- Outer Track -->
+    <circle cx="0" cy="0" r="60" fill="none" stroke="#15222e" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="60" transform="rotate(135)" />
+    <!-- Glowing Animated Arc -->
+    <circle cx="0" cy="0" r="60" fill="none" stroke="url(#gaugeGrad)" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="100" transform="rotate(135)" filter="url(#neonGlow)">
+      <animate attributeName="stroke-dashoffset" values="120;95;110;90;105" dur="3s" repeatCount="indefinite" />
+    </circle>
+    <text x="0" y="-2" fill="#ffffff" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle">541.0</text>
+    <text x="0" y="16" fill="#38ef7d" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">FPS [STABLE]</text>
+    <text x="0" y="32" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">PEAK: 1,108 FPS</text>
+  </g>
+
+  <!-- Gauge 2: Frametime Dial -->
+  <g transform="translate(400, 115)">
+    <!-- Outer Track -->
+    <circle cx="0" cy="0" r="60" fill="none" stroke="#15222e" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="60" transform="rotate(135)" />
+    <!-- Glowing Arc -->
+    <circle cx="0" cy="0" r="60" fill="none" stroke="#00f2fe" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="190" transform="rotate(135)" filter="url(#neonGlow)">
+      <animate attributeName="stroke-dashoffset" values="200;185;195;180;190" dur="2.5s" repeatCount="indefinite" />
+    </circle>
+    <text x="0" y="-2" fill="#ffca28" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle">1.8 ms</text>
+    <text x="0" y="16" fill="#00f2fe" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">FRAMETIME (EMA)</text>
+    <text x="0" y="32" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">MIN: 1.1 / MAX: 6.8</text>
+  </g>
+
+  <!-- Gauge 3: Mach P-Core Affinity -->
+  <g transform="translate(660, 115)">
+    <!-- Outer Track -->
+    <circle cx="0" cy="0" r="60" fill="none" stroke="#15222e" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="60" transform="rotate(135)" />
+    <!-- Glowing Arc (100% Locked) -->
+    <circle cx="0" cy="0" r="60" fill="none" stroke="#38ef7d" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="70" transform="rotate(135)" filter="url(#neonGlow)">
+      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.8s" repeatCount="indefinite" />
+    </circle>
+    <text x="0" y="-2" fill="#38ef7d" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">LOCKED</text>
+    <text x="0" y="16" fill="#00f2fe" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">4.05 GHz P-CORE</text>
+    <text x="0" y="32" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">TAG 1 · ZERO STALL</text>
+  </g>
+</svg>

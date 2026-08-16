@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180" width="100%" height="180">
+  <defs>
+    <filter id="coreGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="2" y="2" width="796" height="176" rx="14" fill="#080e14" stroke="#00e5ff" stroke-width="1.5" />
+
+  <text x="24" y="26" fill="#8b949e" font-family="monospace" font-size="11" font-weight="bold">MACH KERNEL P-CORE &amp; E-CORE REAL-TIME ALLOCATION MATRIX</text>
+
+  <!-- 4 P-Cores (Left Cluster) -->
+  <g transform="translate(24, 40)">
+    <rect x="0" y="0" width="360" height="120" rx="8" fill="#0d1821" stroke="#00f2fe" stroke-width="1.2" />
+    <text x="14" y="22" fill="#00f2fe" font-family="monospace" font-size="12" font-weight="bold">PERFORMANCE CLUSTER (4x P-CORES @ 4.05 GHz)</text>
+
+    <!-- Core 0: Render Thread (Pulsing) -->
+    <rect x="14" y="34" width="158" height="34" rx="4" fill="#003b46" stroke="#38ef7d" stroke-width="1.5" filter="url(#coreGlow)">
+      <animate attributeName="stroke" values="#38ef7d;#00f2fe;#38ef7d" dur="1.5s" repeatCount="indefinite" />
+    </rect>
+    <text x="22" y="48" fill="#38ef7d" font-family="monospace" font-size="10" font-weight="bold">CORE 0: RENDER THREAD</text>
+    <text x="22" y="61" fill="#ffffff" font-family="monospace" font-size="9">AFFINITY TAG 1 [LOCKED]</text>
+
+    <!-- Core 1: Sodium 1 -->
+    <rect x="186" y="34" width="158" height="34" rx="4" fill="#15222e" stroke="#00e5ff" stroke-width="1" />
+    <text x="194" y="48" fill="#00f2fe" font-family="monospace" font-size="10">CORE 1: SODIUM WORKER 1</text>
+    <text x="194" y="61" fill="#8b949e" font-family="monospace" font-size="9">OFF-HEAP SWAP BUFFER</text>
+
+    <!-- Core 2: Sodium 2 -->
+    <rect x="14" y="76" width="158" height="34" rx="4" fill="#15222e" stroke="#00e5ff" stroke-width="1" />
+    <text x="22" y="90" fill="#00f2fe" font-family="monospace" font-size="10">CORE 2: SODIUM WORKER 2</text>
+    <text x="22" y="103" fill="#8b949e" font-family="monospace" font-size="9">SIMD COMPACT VERTEX</text>
+
+    <!-- Core 3: Sodium 3 -->
+    <rect x="186" y="76" width="158" height="34" rx="4" fill="#15222e" stroke="#00e5ff" stroke-width="1" />
+    <text x="194" y="90" fill="#00f2fe" font-family="monospace" font-size="10">CORE 3: SODIUM WORKER 3</text>
+    <text x="194" y="103" fill="#8b949e" font-family="monospace" font-size="9">OCCLUSION CULLING</text>
+  </g>
+
+  <!-- 4 E-Cores (Right Cluster) -->
+  <g transform="translate(416, 40)">
+    <rect x="0" y="0" width="360" height="120" rx="8" fill="#0d1821" stroke="#ffca28" stroke-width="1.2" />
+    <text x="14" y="22" fill="#ffca28" font-family="monospace" font-size="12" font-weight="bold">EFFICIENCY CLUSTER (4x E-CORES @ 2.75 GHz)</text>
+
+    <rect x="14" y="34" width="158" height="34" rx="4" fill="#1e1b14" stroke="#ffca28" stroke-width="1" />
+    <text x="22" y="48" fill="#ffca28" font-family="monospace" font-size="10">CORE 4: AUDIO (OPENAL)</text>
+    <text x="22" y="61" fill="#8b949e" font-family="monospace" font-size="9">SPATIAL 3D SOUND</text>
+
+    <rect x="186" y="34" width="158" height="34" rx="4" fill="#1e1b14" stroke="#ffca28" stroke-width="1" />
+    <text x="194" y="48" fill="#ffca28" font-family="monospace" font-size="10">CORE 5: ZGC GENERATIONAL</text>
+    <text x="194" y="61" fill="#8b949e" font-family="monospace" font-size="9">&lt; 1ms MICRO-SWEEPS</text>
+
+    <rect x="14" y="76" width="158" height="34" rx="4" fill="#1e1b14" stroke="#ffca28" stroke-width="1" />
+    <text x="22" y="90" fill="#ffca28" font-family="monospace" font-size="10">CORE 6: C2ME GENERATION</text>
+    <text x="22" y="103" fill="#8b949e" font-family="monospace" font-size="9">ASYNC WORLD STREAM</text>
+
+    <rect x="186" y="76" width="158" height="34" rx="4" fill="#1e1b14" stroke="#ffca28" stroke-width="1" />
+    <text x="194" y="90" fill="#ffca28" font-family="monospace" font-size="10">CORE 7: MACOS DAEMONS</text>
+    <text x="194" y="103" fill="#8b949e" font-family="monospace" font-size="9">BACKGROUND SERVICES</text>
+  </g>
+</svg>

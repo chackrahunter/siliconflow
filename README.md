@@ -16,7 +16,7 @@
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Minecraft-1.21.4-blue?style=for-the-badge&logo=minecraft&logoColor=white" alt="Minecraft 1.21.4"></a>
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-0.19.3-dbb48c?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric Loader"></a>
   <a href="https://apple.com/"><img src="https://img.shields.io/badge/Apple_Silicon-M1_|_M2_|_M3_|_M4-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Silicon M-Series"></a>
-  <a href="https://github.com/chackrahunter/m3-frametime/releases"><img src="https://img.shields.io/badge/Release-v1.0.9-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.9"></a>
+  <a href="https://github.com/chackrahunter/m3-frametime/releases"><img src="https://img.shields.io/badge/Release-v1.0.10-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.10"></a>
   <a href="https://github.com/chackrahunter/m3-frametime"><img src="https://img.shields.io/badge/Diagnostics-236_Error_Codes-a855f7?style=for-the-badge&logo=matrix&logoColor=white" alt="236 Diagnostic Codes"></a>
   <a href="https://github.com/chackrahunter/m3-frametime"><img src="https://img.shields.io/badge/Status-Zero--Stutter_Certified-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Zero-Stutter Certified"></a>
 </p>
@@ -31,7 +31,7 @@
 
 ---
 
-## 🌟 Overview
+## 🌟 Overview & Real-Time Dials
 
 **SiliconFlow** is a native performance engine specifically engineered for **macOS Darwin on ARM64 Apple Silicon (M1, M2, M3, M4)**. 
 
@@ -40,12 +40,20 @@ Standard Minecraft performance mods are designed around generic x86 Windows/Linu
 SiliconFlow interacts directly with the **macOS Mach Microkernel** and **Metal Direct Pipelines** to deliver butter-smooth, ultra-high framerates (up to **540–1100+ FPS**) with true **sub-millisecond frametimes** and zero micro-stuttering.
 
 <p align="center">
+  <img src="docs/assets/fps_gauge_animated.svg" alt="Animated Telemetry Dials" width="100%" />
+</p>
+
+<p align="center">
   <img src="docs/assets/live_wave.svg" alt="Animated Real-Time Wave Oscillator" width="100%" />
 </p>
 
 ---
 
 ## 🚀 Real In-Game Benchmarks & Live Telemetry (Apple M3 8GB)
+
+<p align="center">
+  <img src="docs/assets/benchmark_bars_animated.svg" alt="Animated Benchmark Comparison" width="100%" />
+</p>
 
 | Metric | Vanilla / Generic Modpacks | With SiliconFlow (Quantum Silicon) | Improvement |
 | :--- | :---: | :---: | :---: |
@@ -65,6 +73,10 @@ SiliconFlow interacts directly with the **macOS Mach Microkernel** and **Metal D
 
 <p align="center">
   <img src="docs/assets/architecture.png" alt="Apple Silicon Architecture Diagram" width="95%" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/pcore_matrix_animated.svg" alt="Animated CPU Allocation Matrix" width="100%" />
 </p>
 
 ### 1. 🧬 Native Mach Kernel Thread Affinity (`THREAD_AFFINITY_POLICY`)
@@ -91,17 +103,21 @@ SiliconFlow interacts directly with the **macOS Mach Microkernel** and **Metal D
 
 ---
 
-## 📊 F8 In-Game Diagnostic Matrix & Live HUD
+## 📊 F8 In-Game Diagnostic Matrix & 236-Code Scanner
 
 <p align="center">
   <img src="docs/assets/hud_preview.png" alt="Real In-Game F8 Diagnostic HUD" width="95%" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/stutter_matrix_animated.svg" alt="Animated 236 Diagnostic Error Code Radar Scanner" width="100%" />
 </p>
 
 Press **`F8`** in-game to toggle the real-time telemetry overlay:
 
 ```text
 ========================================================================
-⚡ [SILICONFLOW: P-CORE] | [v1.0.9] | [15:23:05]
+⚡ [SILICONFLOW: P-CORE] | [v1.0.10] | [15:23:05]
 FPS: 541.0 [HIGH/STABLE] | FT: 1.8 ms [MIN: 1.1 / MAX: 6.8]
 TPS: 20.0 (SYNCED) | PING: 14 ms
 CPU/GPU: P-CORE AFFINITY: LOCKED | GPU UTIL: 34% | CPU LOAD: 41%
@@ -202,7 +218,7 @@ cd m3-frametime
 ./gradlew build
 
 # The compiled artifact is located at:
-# build/libs/siliconflow-1.0.9+1.21.4.jar
+# build/libs/siliconflow-1.0.10+1.21.4.jar
 ```
 
 ---
