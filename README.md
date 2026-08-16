@@ -17,13 +17,13 @@
   <a href="https://www.paypal.me/Donsko2007"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
 </p>
 
-<p><strong>See the frame-time story. Change only what you can explain.</strong><br>
-<sub>Client-side controls and diagnostics for Fabric Minecraft on Apple-Silicon Macs.</sub></p>
+<p><strong>High-performance Minecraft optimization for Apple-Silicon Macs.</strong><br>
+<sub>Client-side frame pacing, memory discipline, and visual-workload controls for M-series chips.</sub></p>
 
 </div>
 
 > [!IMPORTANT]
-> **Beta software, exact target:** SiliconFlow currently builds one version-specific Fabric artifact for **Minecraft 1.21.4**. The dependency target is compile-verified; broader launch compatibility is not implied. It is not a universal JAR. Optional modules and companion-mod integrations are best-effort, and no setting guarantees a particular FPS, frame time, GPU result, or shader result.
+> **Beta software, exact target:** SiliconFlow currently builds one version-specific Fabric artifact for **Minecraft 1.21.4**. The dependency target is compile-verified; broader launch compatibility is not implied. It is not a universal JAR. Companion-mod integrations and optional troubleshooting tools are best-effort, and no setting guarantees a particular FPS, frame time, GPU result, or shader result.
 
 <p align="center">
   <img src="docs/assets/hud_preview.png" alt="Minecraft forest gameplay with the SiliconFlow F8 diagnostic overlay visible" width="100%">
@@ -33,43 +33,44 @@
 
 ## Start here
 
-SiliconFlow is a client-side performance companion for Fabric Minecraft on Apple-Silicon Macs. Its primary job is to make client-side performance behavior more controllable: conservative, user-owned policies around frame pacing, memory pressure, visual workload, and render overhead. Optional telemetry helps you inspect and compare those decisions.
+SiliconFlow is a high-performance boost and optimization mod for Fabric Minecraft on Apple-Silicon Macs with M-series chips. It focuses on practical client-side improvements: steadier frame pacing, conservative memory behavior, reduced rendering overhead, and configurable visual-workload controls. Profiles are bounded and user-owned so you can tune the balance between smoothness, image detail, and system headroom.
 
-The aim is not a universal “boost”. It is a clearer feedback loop:
+The optional F8 overlay and performance recorder were created for development and troubleshooting. They are not the product’s purpose, are not required for normal gameplay, and do not turn SiliconFlow into a tracking or telemetry product.
 
-1. **Observe** frame-time, memory, GC, runtime, and spike signals.
-2. **Choose** a bounded profile or individual setting.
-3. **Repeat** the same workload and compare evidence.
+1. **Install** the exact Minecraft 1.21.4 artifact.
+2. **Start** with the `PLAYABLE` profile.
+3. **Tune** individual settings only when your workload calls for it.
 
 | If you want to… | Start with… |
 | --- | --- |
 | Install the exact target build | [Installation](#installation) |
 | Understand what the mod owns | [Ownership boundaries](#ownership-boundaries) |
-| Inspect a live session | [Diagnostics](#diagnostics) |
-| Compare two configurations | [Benchmark methodology](#benchmark-methodology) |
-| Diagnose hitching on an 8 GB Mac | [`docs/max-fps-checklist.md`](docs/max-fps-checklist.md) |
+| Inspect a live session | [Optional diagnostics](#optional-developer-and-troubleshooting-tools) |
+| Compare two configurations | [Optional benchmark method](#optional-benchmark-and-troubleshooting-methodology) |
+| Tune an 8 GB Apple-Silicon Mac | [`docs/max-fps-checklist.md`](docs/max-fps-checklist.md) |
+| Use optional diagnostics | [Diagnostics](#optional-developer-and-troubleshooting-tools) |
 | Understand version support | [`docs/compatibility.md`](docs/compatibility.md) |
 
-## Why frame time matters on Apple Silicon
+## Why SiliconFlow optimizes Apple Silicon
 
 Minecraft Java on macOS uses an OpenGL path translated onto Metal. Apple Silicon also uses unified memory: the JVM heap, native Minecraft allocations, GPU resources, the compositor, and other applications share one pool. A larger Java heap is therefore not automatically more headroom.
 
-SiliconFlow focuses on signals and controls that are observable from the client. It does not pretend to measure GPU utilization, VRAM, or exact core placement when those values are outside its probes.
+SiliconFlow applies controls that are useful and supportable from the client. It does not pretend to measure GPU utilization, VRAM, or exact core placement when those values are outside its probes; macOS remains authoritative for scheduling and memory pressure.
 
 <p align="center">
-  <img src="docs/assets/performance-model.svg" alt="Diagram showing frame-time investigation across the shared-memory, rendering, scheduling, and evidence layers" width="100%">
+  <img src="docs/assets/performance-model.svg" alt="Diagram showing Apple-Silicon optimization across shared memory, rendering, scheduling, and optional diagnostics" width="100%">
 </p>
 
 *Technical model, not a performance chart. It shows why frame-time work must consider the whole client and operating system rather than FPS alone.*
 
-## What it provides
+## Performance optimization features
 
 - **Frame-time discipline** — bounded pacing and spike-aware behavior intended to reduce avoidable client-side variance.
 - **Memory discipline** — conservative defaults and pressure-aware signals for shared-memory Macs.
 - **Visual workload controls** — optional budgets or reductions for particles, distant entities and block entities, selected overlays, clouds and weather extras, glints, lightmap cadence, and related client work.
 - **Shader-aware boundaries** — optional reductions do not attempt to replace or patch a shader pipeline.
 - **Apple-Silicon-friendly requests** — best-effort Darwin QoS and thread-priority requests where supported; macOS retains scheduling authority.
-- **Diagnostics** — an optional F8 overlay and bounded JSON recorder for troubleshooting and controlled comparisons.
+- **Optional developer tools** — an F8 overlay and bounded JSON recorder for troubleshooting and controlled comparisons; neither is required for normal gameplay.
 - **User choice** — profiles and individual settings keep visual and performance trade-offs explicit.
 
 ### Profiles
@@ -79,7 +80,7 @@ SiliconFlow focuses on signals and controls that are observable from the client.
 | `PLAYABLE` | Normal gameplay | Recommended starting point; conservative and reversible |
 | `BALANCED` | Heavier scenes | Stronger performance trade-off |
 | `MAX` | Difficult workloads | Aggressive visual-cost profile |
-| `TELEMETRY` | Investigation | Diagnostics-oriented behavior |
+| `TELEMETRY` | Investigation | Optional diagnostics-oriented behavior |
 
 A profile is a policy preset, not a guarantee. Start with `PLAYABLE`, change one variable at a time, and compare the same workload.
 
@@ -98,12 +99,14 @@ SiliconFlow is designed to complement specialized mods instead of replacing thei
 | Client-side policy, diagnostics, and selected visual workload | SiliconFlow | Bounded, configurable, and best-effort |
 
 <p align="center">
-  <img src="docs/assets/architecture.svg" alt="Schematic showing Minecraft client signals flowing through SiliconFlow policies to diagnostics and optional controls, with macOS retaining scheduling authority" width="100%">
+  <img src="docs/assets/architecture.svg" alt="Schematic showing Minecraft client workload flowing through SiliconFlow optimization policies to optional diagnostics and performance controls, with macOS retaining scheduling authority" width="100%">
 </p>
 
 *Data flow and ownership schematic. It is not a measured performance chart.*
 
-## Diagnostics
+## Optional developer and troubleshooting tools
+
+These tools support SiliconFlow development and focused troubleshooting. SiliconFlow is an optimization mod, not a tracking or telemetry product.
 
 ### F8 overlay
 
@@ -111,7 +114,7 @@ Press **F8** to toggle the optional overlay. It reports observable signals such 
 
 ### JSON recorder
 
-When enabled, the bounded recorder can write periodic diagnostics to:
+When explicitly enabled for troubleshooting, the bounded recorder can write periodic diagnostics to:
 
 ```text
 <instance>/m3-live-telemetry.json
@@ -158,7 +161,7 @@ The configuration is stored at:
 <instance>/config/m3-frametime.json
 ```
 
-The configuration owns user intent: active profile, optional F8 overlay, bounded performance recording, spike threshold, optional spike logging, render-thread/Darwin QoS requests, and swap-interval behavior. It does not override the ownership boundaries above.
+The configuration owns user intent: active optimization profile, optional F8 overlay, bounded performance recording, spike threshold, optional spike logging, render-thread/Darwin QoS requests, and swap-interval behavior. It does not override the ownership boundaries above.
 
 Keep the file when troubleshooting. Reset it only when release notes or an implementation migration explicitly call for it.
 
@@ -170,19 +173,19 @@ Keep the file when troubleshooting. Reset it only when release notes or an imple
 | Causes, evidence, and repeatable troubleshooting | [`docs/stutter-research.md`](docs/stutter-research.md) |
 | Version and integration policy | [`docs/compatibility.md`](docs/compatibility.md) |
 
-## Benchmark methodology
+## Optional benchmark and troubleshooting methodology
 
-SiliconFlow makes no universal performance claim. Label a number **measured** only when the raw source and test conditions are available; otherwise label it **illustrative** or **unverified**.
+Benchmarking is optional and exists to help developers and users troubleshoot or compare configuration changes. SiliconFlow makes no universal performance claim. Label a number **measured** only when the raw source and test conditions are available; otherwise label it **illustrative** or **unverified**.
 
 <p align="center">
-  <img src="docs/assets/benchmark-loop.svg" alt="Five-step benchmark loop: record conditions, match workloads, warm up, repeat runs, and report distributions with raw evidence" width="100%">
+  <img src="docs/assets/benchmark-loop.svg" alt="Optional five-step optimization check: record conditions, match workloads, warm up, repeat runs, and report distributions" width="100%">
 </p>
 
 *Benchmark discipline at a glance. The loop describes method, not an expected result.*
 
 1. **Record conditions.** Mac model and M-chip generation, RAM, macOS version, Java vendor and architecture, Minecraft/Fabric versions, mod versions, shader state, refresh rate, render/simulation distance, and JVM arguments.
 2. **Match the workload.** Create profiles that differ only by SiliconFlow being present or absent. Keep Sodium, Iris, shader pack, resource pack, world, seed, camera route, settings, and background applications identical. If optional mods are tested, keep the same set in both runs.
-3. **Warm up and repeat.** Warm up for five minutes, then repeat the same route for at least five runs. Use the F8 overlay or recorder only as optional diagnostic evidence; retain raw output for every run when enabled.
+3. **Warm up and repeat.** Warm up for five minutes, then repeat the same route for at least five runs. Use the F8 overlay or recorder only when optional diagnostic evidence is useful; retain raw output for every run when enabled.
 4. **Compare distributions.** Report median and p95/p99 frame time, sample count, run duration, and notable spikes. Treat FPS as a secondary summary, not proof of causality.
 5. **Publish the evidence.** Keep the configuration, mod list, and test notes beside any aggregate. Do not infer GPU utilization, VRAM use, or core placement from values SiliconFlow cannot measure.
 
@@ -196,16 +199,16 @@ For practical Apple-Silicon troubleshooting, see [`docs/max-fps-checklist.md`](d
 | Frequent long freezes | Use native aarch64 Java, watch macOS Memory Pressure, reduce render distance, and avoid oversized heaps on 8 GB systems. |
 | Chunk-loading hitching with Sodium | Test Sodium’s macOS **Chunk Memory Allocator = `SWAP`** and compare against a documented baseline. |
 | Shaders behave differently | Record the exact Iris version, shader pack, driver state, and settings; shader runs are separate and not guaranteed. |
-| Telemetry says unavailable | This is expected for signals SiliconFlow does not instrument, including GPU utilization, VRAM, and exact core placement. |
+| An optional diagnostic says unavailable | This is expected for signals SiliconFlow does not instrument, including GPU utilization, VRAM, and exact core placement. |
 | A configuration change worsens behavior | Restore the previous file or reset only when an upgrade note calls for it; then retest one variable at a time. |
 
-When reporting an issue, include exact Minecraft/Fabric/Java versions, Mac model and RAM, the full mod list, active profile, configuration, log, and raw telemetry only if recording was enabled.
+When reporting an issue, include exact Minecraft/Fabric/Java versions, Mac model and RAM, the full mod list, active profile, configuration, log, and optional diagnostic output only if recording was enabled.
 
 ## Beta status and limitations
 
 - **Beta:** APIs, profiles, labels, and behavior can change.
 - **Exact target:** the currently verified build is for Minecraft 1.21.4 only.
-- **Optional modules:** diagnostics, QoS requests, and companion integrations are best-effort and may report unavailable data.
+- **Optional tools and integrations:** F8 diagnostics, recording, QoS requests, and companion integrations are best-effort; diagnostics may report unavailable data.
 - **OS authority:** macOS controls scheduling, memory pressure, swap, and core placement.
 - **Integration boundaries:** Sodium, Iris, shaders, resource packs, drivers, launchers, and other mods can change behavior.
 - **Visual trade-offs:** optional reductions can alter particles, overlays, glints, clouds, weather, or distant-entity presentation.
