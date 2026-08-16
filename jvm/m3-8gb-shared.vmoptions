@@ -1,0 +1,14 @@
+# Shared desktop (Cursor / browser still open) on 8 GB Apple Silicon.
+# Prefer quitting other apps and using m3-8gb.vmoptions instead.
+# Prefer ≤3G; NEVER -Xmx4G / 4096M on 8 GB.
+
+-Xms1024M
+-Xmx2048M
+-XX:SoftMaxHeapSize=1536M
+-XX:+UseZGC
+-XX:+ZGenerational
+-XX:+AlwaysPreTouch
+-XX:+DisableExplicitGC
+-XX:NmethodSweepActivity=1
+-XX:+PerfDisableSharedMem
+-Djava.awt.headless=true

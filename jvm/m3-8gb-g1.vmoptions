@@ -1,0 +1,11 @@
+# Optional G1 profile (default collector) if ZGC feels worse on your JDK build.
+# Prefer ≤3G; NEVER 4G on 8GB Mac. Matches m3-8gb.vmoptions heap ceiling.
+
+-Xms1536M
+-Xmx2560M
+-XX:+UseG1GC
+-XX:MaxGCPauseMillis=50
+-XX:+AlwaysPreTouch
+-XX:+DisableExplicitGC
+-XX:+PerfDisableSharedMem
+-Djava.awt.headless=true

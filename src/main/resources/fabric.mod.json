@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "m3-frametime",
+	"version": "${version}",
+	"name": "M3 Frametime Companion",
+	"description": "Ultra-Performance companion for Apple Silicon M3 8GB: Darwin QoS P-core boost, Iris shader shadow-pass culling, FastMath, Sodium worker soft-boost, soft culls, particle budgets. Not a renderer replacement.",
+	"authors": ["Don-Calvin"],
+	"contact": {},
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["dev.doncalvin.m3frametime.M3FrametimeMod"],
+		"client": ["dev.doncalvin.m3frametime.M3FrametimeClient"]
+	},
+	"mixins": [
+		"m3frametime.mixins.json",
+		{
+			"config": "m3frametime.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.16.14",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"sodium": "*",
+		"iris": "*",
+		"lithium": "*",
+		"ferritecore": "*",
+		"immediatelyfast": "*"
+	},
+	"custom": {
+		"modmenu": {
+			"links": {}
+		}
+	}
+}

@@ -1,0 +1,17 @@
+# M3 Frametime — dedicated Minecraft on 8 GB Apple Silicon (preferred)
+# Quit Cursor/Chrome/Discord first. Unified memory: -Xmx only caps Java heap;
+# Metal/GL/Sodium live outside it. SoftMax keeps working set under Xmx.
+# Prefer ≤3G; NEVER 4096M / -Xmx4G — swap thrashing kills 1% lows.
+# Prefer ARM64 Temurin/Zulu 21 — NEVER Rosetta/x86_64 Java.
+# Do NOT set -XX:ActiveProcessorCount=… — that caps M-chip cores.
+
+-Xms1536M
+-Xmx2560M
+-XX:SoftMaxHeapSize=2048M
+-XX:+UseZGC
+-XX:+ZGenerational
+-XX:+AlwaysPreTouch
+-XX:+DisableExplicitGC
+-XX:NmethodSweepActivity=1
+-XX:+PerfDisableSharedMem
+-Djava.awt.headless=true

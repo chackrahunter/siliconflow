@@ -1,0 +1,14 @@
+# Smooth-first fallback if Memory Pressure yellows with m3-8gb.vmoptions (2560M).
+# Filename is historical — this is NOT 3584M and NEVER 4096M. Cap stays ≤3G.
+# Use only with everything else quit; drop further to -Xmx2G -Xms1G if still swapping.
+
+-Xms1024M
+-Xmx2048M
+-XX:SoftMaxHeapSize=1536M
+-XX:+UseZGC
+-XX:+ZGenerational
+-XX:+AlwaysPreTouch
+-XX:+DisableExplicitGC
+-XX:NmethodSweepActivity=1
+-XX:+PerfDisableSharedMem
+-Djava.awt.headless=true
