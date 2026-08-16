@@ -16,7 +16,9 @@
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Minecraft-1.21.4-blue?style=for-the-badge&logo=minecraft&logoColor=white" alt="Minecraft 1.21.4"></a>
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-0.19.3-dbb48c?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric Loader"></a>
   <a href="https://apple.com/"><img src="https://img.shields.io/badge/Apple_Silicon-M1_|_M2_|_M3_|_M4-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Silicon M-Series"></a>
-  <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/badge/Release-v1.0.17-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.17"></a>
+  <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/badge/Release-v1.0.18-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.18"></a>
+  <a href="https://ko-fi.com/chackrahunter"><img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Ko-fi"></a>
+  <a href="https://www.paypal.me/Donsko2007"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal"></a>
   <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/Diagnostics-236_Error_Codes-a855f7?style=for-the-badge&logo=matrix&logoColor=white" alt="236 Diagnostic Codes"></a>
   <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/Status-Zero--Stutter_Certified-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Zero-Stutter Certified"></a>
 </p>
@@ -117,7 +119,7 @@ Press **`F8`** in-game to toggle the real-time telemetry overlay:
 
 ```text
 ========================================================================
-⚡ [SILICONFLOW: P-CORE] | [v1.0.17] | [15:23:05]
+⚡ [SILICONFLOW: P-CORE] | [v1.0.18] | [15:23:05]
 FPS: 541.0 [HIGH/STABLE] | FT: 1.8 ms [MIN: 1.1 / MAX: 6.8]
 TPS: 20.0 (SYNCED) | PING: 14 ms
 CPU/GPU: P-CORE AFFINITY: LOCKED | GPU UTIL: 34% | CPU LOAD: 41%
@@ -218,8 +220,35 @@ cd siliconflow
 ./gradlew build
 
 # The compiled artifact is located at:
-# build/libs/siliconflow-1.0.17+1.21.4.jar
+# build/libs/siliconflow-1.0.18+1.21.4.jar
 ```
+
+<p align="center">
+  <img src="docs/assets/divider.svg" alt="Animated Divider" width="100%" />
+</p>
+
+---
+
+## ☕ Support & Donations (Unterstützung & Spenden)
+
+Wenn dir **SiliconFlow** gefällt, deine Frametimes auf Apple Silicon geglättet hat oder dir 500+ FPS in Minecraft ermöglicht hat, freue ich mich riesig über deine Unterstützung! 
+
+Jede einzelne Spende, jeder Kaffee und jeder Support hilft mir enorm dabei, das Projekt kontinuierlich weiterzuentwickeln, neue Optimierungen zu erforschen und für künftige Minecraft-Versionen bereitzustellen. Vielen herzlichen Dank! ❤️
+
+<p align="center">
+  <a href="https://ko-fi.com/chackrahunter" target="_blank">
+    <img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Support on Ko-fi" height="40" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.paypal.me/Donsko2007" target="_blank">
+    <img src="https://img.shields.io/badge/Donate_with-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate with PayPal" height="40" />
+  </a>
+</p>
+
+- ☕ **Ko-fi**: [https://ko-fi.com/chackrahunter](https://ko-fi.com/chackrahunter)
+- 💳 **PayPal**: [https://www.paypal.me/Donsko2007](https://www.paypal.me/Donsko2007)
+
+*Vielen Dank für jeden Support und jede Wertschätzung!* 🙏
 
 ---
 
