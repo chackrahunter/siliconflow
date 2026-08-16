@@ -1,11 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="100%" height="200">
   <defs>
-    <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#00f2fe" />
-      <stop offset="60%" stop-color="#38ef7d" />
-      <stop offset="100%" stop-color="#ffca28" />
+    <!-- Gauge 1 Gradient: Amber -> Green -> Cyan -->
+    <linearGradient id="fpsGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffca28" />
+      <stop offset="50%" stop-color="#38ef7d" />
+      <stop offset="100%" stop-color="#00f2fe" />
     </linearGradient>
-    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+
+    <!-- Gauge 2 Gradient: Amber -> Cyan -->
+    <linearGradient id="ftGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffca28" />
+      <stop offset="60%" stop-color="#00f2fe" />
+      <stop offset="100%" stop-color="#4facfe" />
+    </linearGradient>
+
+    <!-- Gauge 3 Gradient: Neon Green -->
+    <linearGradient id="lockGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38ef7d" />
+      <stop offset="100%" stop-color="#00f2fe" />
+    </linearGradient>
+
+    <filter id="dialGlow" x="-30%" y="-30%" width="160%" height="160%">
       <feGaussianBlur stdDeviation="5" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
@@ -14,50 +29,71 @@
     </filter>
   </defs>
 
-  <!-- Background Container -->
+  <!-- Container Box -->
   <rect x="2" y="2" width="796" height="196" rx="14" fill="#080e14" stroke="#00e5ff" stroke-width="1.5" />
 
-  <!-- Title & Status -->
-  <text x="24" y="28" fill="#8b949e" font-family="monospace" font-size="11" font-weight="bold">SILICONFLOW REAL-TIME TELEMETRY TELEMETRIC DIALS</text>
+  <!-- Top Title & Badge -->
+  <text x="24" y="28" fill="#8b949e" font-family="monospace" font-size="11" font-weight="bold">SILICONFLOW REAL-TIME TELEMETRIC DIALS</text>
   <rect x="670" y="14" width="115" height="20" rx="10" fill="#003b46" stroke="#00f2fe" stroke-width="1">
     <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
   </rect>
   <text x="727" y="28" fill="#00f2fe" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">LIVE ENGINE</text>
 
-  <!-- Gauge 1: FPS Counter -->
+  <!-- ========================================== -->
+  <!-- GAUGE 1: FPS COUNTER (541.0 FPS)           -->
+  <!-- ========================================== -->
   <g transform="translate(140, 115)">
-    <!-- Outer Track -->
-    <circle cx="0" cy="0" r="60" fill="none" stroke="#15222e" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="60" transform="rotate(135)" />
-    <!-- Glowing Animated Arc -->
-    <circle cx="0" cy="0" r="60" fill="none" stroke="url(#gaugeGrad)" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="100" transform="rotate(135)" filter="url(#neonGlow)">
-      <animate attributeName="stroke-dashoffset" values="120;95;110;90;105" dur="3s" repeatCount="indefinite" />
+    <!-- Base Background Track (240 deg arc) -->
+    <circle cx="0" cy="0" r="55" fill="none" stroke="#15222e" stroke-width="9" 
+            stroke-dasharray="230 345.5" stroke-linecap="round" transform="rotate(150)" />
+    
+    <!-- Glowing Animated Active Arc -->
+    <circle cx="0" cy="0" r="55" fill="none" stroke="url(#fpsGrad)" stroke-width="9" 
+            stroke-dasharray="230 345.5" stroke-dashoffset="60" stroke-linecap="round" 
+            transform="rotate(150)" filter="url(#dialGlow)">
+      <animate attributeName="stroke-dashoffset" values="75;50;65;45;60" dur="3.5s" repeatCount="indefinite" />
     </circle>
+    
     <text x="0" y="-2" fill="#ffffff" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle">541.0</text>
     <text x="0" y="16" fill="#38ef7d" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">FPS [STABLE]</text>
     <text x="0" y="32" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">PEAK: 1,108 FPS</text>
   </g>
 
-  <!-- Gauge 2: Frametime Dial -->
+  <!-- ========================================== -->
+  <!-- GAUGE 2: FRAMETIME DIAL (1.8 ms)           -->
+  <!-- ========================================== -->
   <g transform="translate(400, 115)">
-    <!-- Outer Track -->
-    <circle cx="0" cy="0" r="60" fill="none" stroke="#15222e" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="60" transform="rotate(135)" />
-    <!-- Glowing Arc -->
-    <circle cx="0" cy="0" r="60" fill="none" stroke="#00f2fe" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="190" transform="rotate(135)" filter="url(#neonGlow)">
-      <animate attributeName="stroke-dashoffset" values="200;185;195;180;190" dur="2.5s" repeatCount="indefinite" />
+    <!-- Base Background Track (240 deg arc) -->
+    <circle cx="0" cy="0" r="55" fill="none" stroke="#15222e" stroke-width="9" 
+            stroke-dasharray="230 345.5" stroke-linecap="round" transform="rotate(150)" />
+    
+    <!-- Glowing Animated Active Arc (Starts perfectly from base!) -->
+    <circle cx="0" cy="0" r="55" fill="none" stroke="url(#ftGrad)" stroke-width="9" 
+            stroke-dasharray="230 345.5" stroke-dashoffset="160" stroke-linecap="round" 
+            transform="rotate(150)" filter="url(#dialGlow)">
+      <animate attributeName="stroke-dashoffset" values="170;150;165;145;160" dur="2.8s" repeatCount="indefinite" />
     </circle>
+    
     <text x="0" y="-2" fill="#ffca28" font-family="monospace" font-size="24" font-weight="bold" text-anchor="middle">1.8 ms</text>
     <text x="0" y="16" fill="#00f2fe" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">FRAMETIME (EMA)</text>
     <text x="0" y="32" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">MIN: 1.1 / MAX: 6.8</text>
   </g>
 
-  <!-- Gauge 3: Mach P-Core Affinity -->
+  <!-- ========================================== -->
+  <!-- GAUGE 3: MACH P-CORE AFFINITY (LOCKED)     -->
+  <!-- ========================================== -->
   <g transform="translate(660, 115)">
-    <!-- Outer Track -->
-    <circle cx="0" cy="0" r="60" fill="none" stroke="#15222e" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="60" transform="rotate(135)" />
-    <!-- Glowing Arc (100% Locked) -->
-    <circle cx="0" cy="0" r="60" fill="none" stroke="#38ef7d" stroke-width="10" stroke-dasharray="280" stroke-dashoffset="70" transform="rotate(135)" filter="url(#neonGlow)">
-      <animate attributeName="opacity" values="0.8;1;0.8" dur="1.8s" repeatCount="indefinite" />
+    <!-- Base Background Track (240 deg arc) -->
+    <circle cx="0" cy="0" r="55" fill="none" stroke="#15222e" stroke-width="9" 
+            stroke-dasharray="230 345.5" stroke-linecap="round" transform="rotate(150)" />
+    
+    <!-- Glowing Full Locked Arc (100% Filled) -->
+    <circle cx="0" cy="0" r="55" fill="none" stroke="url(#lockGrad)" stroke-width="9" 
+            stroke-dasharray="230 345.5" stroke-dashoffset="0" stroke-linecap="round" 
+            transform="rotate(150)" filter="url(#dialGlow)">
+      <animate attributeName="opacity" values="0.85;1;0.85" dur="2s" repeatCount="indefinite" />
     </circle>
+    
     <text x="0" y="-2" fill="#38ef7d" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">LOCKED</text>
     <text x="0" y="16" fill="#00f2fe" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">4.05 GHz P-CORE</text>
     <text x="0" y="32" fill="#8b949e" font-family="monospace" font-size="9" text-anchor="middle">TAG 1 · ZERO STALL</text>
