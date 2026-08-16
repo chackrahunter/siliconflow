@@ -82,4 +82,35 @@ public final class FastMath {
 	public static float abs(float v) {
 		return Math.abs(v);
 	}
+
+	/** Fast ARM64 inverse square root with 1 Newton-Raphson iteration (Quake III / NEON approximation). */
+	public static float fastInverseSqrt(float x) {
+		float xhalf = 0.5f * x;
+		int i = Float.floatToIntBits(x);
+		i = 0x5f3759df - (i >> 1);
+		x = Float.intBitsToFloat(i);
+		x = x * (1.5f - xhalf * x * x);
+		return x;
+	}
+
+	/** Fast square root using fastInverseSqrt. */
+	public static float fastSqrt(float x) {
+		return x <= 0.0f ? 0.0f : x * fastInverseSqrt(x);
+	}
+
+	/** Fast 2D Euclidean hypotenuse approximation without overflow. */
+	public static double fastHypot(double x, double z) {
+		double ax = Math.abs(x);
+		double az = Math.abs(z);
+		if (ax < az) {
+			double t = ax;
+			ax = az;
+			az = t;
+		}
+		if (ax == 0.0) {
+			return 0.0;
+		}
+		double r = az / ax;
+		return ax * Math.sqrt(1.0 + r * r);
+	}
 }

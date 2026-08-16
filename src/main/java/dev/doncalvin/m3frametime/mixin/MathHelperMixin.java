@@ -6,8 +6,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
 /**
- * Replaces vanilla MathHelper trigonometric operations with SiliconFlow FastMath.
- * Eliminates native FPU instruction latency and branch stalls on ARM64 Apple Silicon P-Cores.
+ * Replaces vanilla MathHelper trigonometric & geometric operations with SiliconFlow FastMath.
+ * Eliminates native FPU instruction latency, branch stalls, and division bottlenecks on ARM64 Apple Silicon P-Cores.
  */
 @Mixin(MathHelper.class)
 public abstract class MathHelperMixin {
@@ -28,5 +28,14 @@ public abstract class MathHelperMixin {
 	@Overwrite
 	public static float cos(float value) {
 		return FastMath.cos(value);
+	}
+
+	/**
+	 * @author SiliconFlow
+	 * @reason Fast zero-overflow 2D Euclidean hypotenuse
+	 */
+	@Overwrite
+	public static double hypot(double a, double b) {
+		return FastMath.fastHypot(a, b);
 	}
 }
