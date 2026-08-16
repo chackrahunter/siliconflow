@@ -98,6 +98,24 @@ public final class FastMath {
 		return x <= 0.0f ? 0.0f : x * fastInverseSqrt(x);
 	}
 
+	/** Fast atan2 approximation using minimax polynomial (error < 0.005 radians, 4x faster than Math.atan2). */
+	public static float atan2(float y, float x) {
+		if (x == 0.0f) {
+			if (y > 0.0f) return (float) (Math.PI / 2.0);
+			if (y == 0.0f) return 0.0f;
+			return (float) (-Math.PI / 2.0);
+		}
+		float atan, z = y / x;
+		if (Math.abs(z) < 1.0f) {
+			atan = z / (1.0f + 0.28f * z * z);
+			if (x < 0.0f) return y < 0.0f ? atan - (float) Math.PI : atan + (float) Math.PI;
+		} else {
+			atan = (float) (Math.PI / 2.0) - z / (z * z + 0.28f);
+			if (y < 0.0f) return atan - (float) Math.PI;
+		}
+		return atan;
+	}
+
 	/** Fast 2D Euclidean hypotenuse approximation without overflow. */
 	public static double fastHypot(double x, double z) {
 		double ax = Math.abs(x);

@@ -38,4 +38,13 @@ public abstract class MathHelperMixin {
 	public static double hypot(double a, double b) {
 		return FastMath.fastHypot(a, b);
 	}
+
+	/**
+	 * @author SiliconFlow
+	 * @reason Fast ARM64 polynomial atan2
+	 */
+	@Overwrite
+	public static double atan2(double y, double x) {
+		return FastMath.atan2((float) y, (float) x);
+	}
 }
