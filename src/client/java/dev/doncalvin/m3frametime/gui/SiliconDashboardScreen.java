@@ -120,7 +120,7 @@ public final class SiliconDashboardScreen extends Screen {
 		String title = "⚡ SILICONFLOW MASTER CONTROL CENTER";
 		context.drawText(tr, title, cardX + 14, cardY + 12, 0x00F2FE, true);
 
-		String versionInfo = "v1.0.34 · MC " + VersionDetector.get().getRawVersion() + " · " + SiliconCpuTopology.get().getChipName();
+		String versionInfo = "v1.0.35 · MC " + VersionDetector.get().getRawVersion() + " · " + SiliconCpuTopology.get().getChipName();
 		context.drawText(tr, versionInfo, cardX + cardW - tr.getWidth(versionInfo) - 14, cardY + 12, 0x94A3B8, false);
 
 		// Navigation Tabs Strip

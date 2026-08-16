@@ -44,9 +44,9 @@ public final class LiveConfigWatcher {
 				lastModified = modified;
 				AdaptiveWorkerPool.get().execute(() -> {
 					try {
-						M3Config reloaded = M3Config.load();
+						M3FrametimeMod.reloadConfig();
 						M3FrametimeMod.LOGGER.info("LiveConfigWatcher: Hot-reloaded m3-frametime.json in real time!");
-						if (reloaded.boostDarwinQos) {
+						if (M3FrametimeMod.config().boostDarwinQos) {
 							DarwinQos.boostRenderThread();
 						}
 					} catch (Throwable ignored) {

@@ -67,16 +67,7 @@ public final class ScratchPool {
 	}
 
 	public static void releaseAllEphemeral() {
-		ScratchPool local = TL.get();
-		local.releaseEphemeral();
-		synchronized (LIVE_LOCK) {
-			for (int i = 0; i < LIVE.size(); i++) {
-				ScratchPool p = LIVE.get(i);
-				if (p != local) {
-					p.releaseEphemeral();
-				}
-			}
-		}
+		TL.get().releaseEphemeral();
 	}
 
 	private static void shrinkBuilder(StringBuilder sb) {
