@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 90" width="100%" height="90">
+  <defs>
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe">
+        <animate attributeName="stop-color" values="#00f2fe;#4facfe;#00f2fe" dur="3s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="50%" stop-color="#ffca28">
+        <animate attributeName="stop-color" values="#ffca28;#38ef7d;#ffca28" dur="3s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stop-color="#00f2fe">
+        <animate attributeName="stop-color" values="#00f2fe;#00c853;#00f2fe" dur="3s" repeatCount="indefinite" />
+      </stop>
+    </linearGradient>
+
+    <filter id="waveGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background Box -->
+  <rect x="2" y="2" width="796" height="86" rx="10" fill="#080e14" stroke="#00e5ff" stroke-width="1.5"/>
+
+  <!-- Wave Header Labels -->
+  <text x="24" y="24" fill="#ffffff" font-family="monospace" font-size="12" font-weight="bold">REAL-TIME FRAMETIME OSCILLATOR</text>
+  <text x="776" y="24" fill="#38ef7d" font-family="monospace" font-size="12" font-weight="bold" text-anchor="end">1.8 ms · 541.0 FPS [SYNCED]</text>
+
+  <!-- Animated Oscillating Path 1 (Primary Wave) -->
+  <path fill="none" stroke="url(#waveGrad)" stroke-width="2.5" filter="url(#waveGlow)">
+    <animate attributeName="d" 
+      dur="2.5s" 
+      repeatCount="indefinite"
+      values="
+        M 20,55 Q 120,25 220,55 T 420,55 T 620,55 T 780,55;
+        M 20,55 Q 120,75 220,55 T 420,55 T 620,55 T 780,55;
+        M 20,55 Q 120,35 220,65 T 420,45 T 620,65 T 780,55;
+        M 20,55 Q 120,25 220,55 T 420,55 T 620,55 T 780,55
+      " />
+  </path>
+
+  <!-- Animated Oscillating Path 2 (Harmonic Trail) -->
+  <path fill="none" stroke="#00e5ff" stroke-width="1" opacity="0.4">
+    <animate attributeName="d" 
+      dur="3.2s" 
+      repeatCount="indefinite"
+      values="
+        M 20,55 Q 120,70 220,55 T 420,55 T 620,55 T 780,55;
+        M 20,55 Q 120,30 220,55 T 420,55 T 620,55 T 780,55;
+        M 20,55 Q 120,60 220,45 T 420,65 T 620,45 T 780,55;
+        M 20,55 Q 120,70 220,55 T 420,55 T 620,55 T 780,55
+      " />
+  </path>
+</svg>

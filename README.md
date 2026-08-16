@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/logo.png" alt="M3-Frametime Logo" width="160" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 242, 254, 0.4);" />
+  <img src="docs/assets/logo.png" alt="M3-Frametime Logo" width="150" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 242, 254, 0.4);" />
 </p>
 
 <h1 align="center">⚡ M3-Frametime: Quantum Silicon Engine ⚡</h1>
@@ -21,6 +21,14 @@
   <a href="https://github.com/chackrahunter/m3-frametime"><img src="https://img.shields.io/badge/Status-Zero--Stutter_Certified-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Zero-Stutter Certified"></a>
 </p>
 
+<p align="center">
+  <img src="docs/assets/typing_header.svg" alt="Animated Live Darwin Kernel Telemetry" width="100%" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/divider.svg" alt="Animated Divider" width="100%" />
+</p>
+
 ---
 
 ## 🌟 Overview
@@ -30,6 +38,10 @@
 Standard Minecraft performance mods are designed around generic x86 Windows/Linux architectures and fail to leverage Apple Silicon's unique **Unified Memory Architecture (UMA)**, **TBDR (Tile-Based Deferred Rendering) Metal GPU**, and asymmetric **P-Core / E-Core core topologies**. 
 
 M3-Frametime interacts directly with the **macOS Mach Microkernel** and **Metal Direct Pipelines** to deliver butter-smooth, ultra-high framerates (up to **540–1100+ FPS**) with true **sub-millisecond frametimes** and zero micro-stuttering.
+
+<p align="center">
+  <img src="docs/assets/live_wave.svg" alt="Animated Real-Time Wave Oscillator" width="100%" />
+</p>
 
 ---
 
@@ -42,6 +54,10 @@ M3-Frametime interacts directly with the **macOS Mach Microkernel** and **Metal 
 | **1% Low Microstutters** | `140 ms - 237 ms` (GC Stalls) | **`< 12 ms` (Imperceptible)** | **-95% Lag Spikes 🛡️** |
 | **Render Thread Core** | Randomly demoted to 2.7 GHz E-Cores | **100% Pinned to 4.05 GHz P-Cores** | **100% Turbo Residency 🔥** |
 | **Shader Shadow Draw Calls**| `3,800+ Draw Calls / frame` | **`< 1,400 Draw Calls / frame`** | **-63% GPU Load ❄️** |
+
+<p align="center">
+  <img src="docs/assets/divider.svg" alt="Animated Divider" width="100%" />
+</p>
 
 ---
 
@@ -68,6 +84,10 @@ M3-Frametime interacts directly with the **macOS Mach Microkernel** and **Metal 
 - Automatically streams high-frequency JSON telemetry (`m3-live-telemetry.json`) at 2 Hz.
 - Dynamically self-adjusts entity gates, shadow ranges, and particle queues in real time whenever load surges.
 - Hot-reloads `config/m3-frametime.json` in under 1 second without restarting Minecraft!
+
+<p align="center">
+  <img src="docs/assets/divider.svg" alt="Animated Divider" width="100%" />
+</p>
 
 ---
 
@@ -102,6 +122,10 @@ Status Matrix: [STATUS: OK-000] OPTIMAL PERFORMANCE · P-CORE MACH AFFINITY LOCK
 - **`SND-001..015`**: OpenAL Audio Channel Exhaustion & Sync Stalls.
 - **`SYS-001..020`**: Mach Kernel Scheduling, Display Server IPC & QoS Demotion.
 - **`OK-000`**: Complete System Health & Sub-Millisecond Frame Delivery.
+
+<p align="center">
+  <img src="docs/assets/divider.svg" alt="Animated Divider" width="100%" />
+</p>
 
 ---
 
