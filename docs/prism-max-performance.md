@@ -60,10 +60,10 @@ Same **2560M** heap if ZGC feels worse on your JDK build. Do not combine with ZG
 
 1. Open the instance → **Folder** → `mods/`.
 2. **Delete** every old `m3-frametime-*.jar`.
-3. Copy in the current build JAR (e.g. `build/libs/m3-frametime-1.0.1+1.21.4.jar`).
+3. Copy in the current build JAR (e.g. `build/libs/siliconflow-<version>+1.21.4.jar`).
 4. Open `config/` and **delete** `m3-frametime.json` (required on upgrade — old files keep soft culls or `pacingEnabled: true` ≈ ~10 FPS).
 5. Mod order (typical): Fabric API → Sodium → Lithium → FerriteCore → ImmediatelyFast (optional) → **m3-frametime**.  
-   **Do not** add heavy Iris shader packs for “max FPS” on M-series (unsupported; see below).
+   **Treat Iris/shader runs as a separate workload. Do not use them to claim a general SiliconFlow result; record the exact pack and settings.**
 
 ---
 
@@ -91,7 +91,7 @@ Same **2560M** heap if ZGC feels worse on your JDK build. Do not combine with ZG
 
 ## 5. Iris / shaders (caution)
 
-Iris marks **ARM / M-series macOS as unsupported**. Expect stutter, flushes, and crashes with heavy packs.
+Iris/shader behavior depends on the exact Iris version, pack, driver, and settings. Treat heavy packs as a separate compatibility workload and expect results to differ from unshaded runs.
 
 - Prefer **no shaders** for max stability / FPS on this Mac.
 - If you insist: FPS **≤ 60**, try CPU render-ahead **0**, light packs only, low shadow distance.

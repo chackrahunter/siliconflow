@@ -1,40 +1,36 @@
-# Max-FPS Checkliste (8 GB M3)
+# Max-FPS checklist (8 GB Apple Silicon)
 
-Kurz für Don-Calvin. Details: [`prism-max-performance.md`](prism-max-performance.md), [`stutter-research.md`](stutter-research.md).
+This checklist is a compact starting point for reducing frame-time spikes. It is not a guarantee of a particular FPS or frametime.
 
-## Vor dem Start
+## Before launch
 
-- [ ] Netzteil dran, **Low Power Mode aus**
-- [ ] **Cursor / Chrome / Discord** zu — Memory Pressure **grün**
-- [ ] **≥20 % SSD frei**
+- [ ] Plug in the Mac; disable Low Power Mode.
+- [ ] Close unnecessary browser/Electron apps and keep Activity Monitor Memory Pressure green.
+- [ ] Keep at least 20% free SSD space.
 
-## Java & JVM
+## Java and JVM
 
-- [ ] **ARM64** JDK 21 (Activity Monitor → Java → **Apple**, kein Rosetta)
-- [ ] Args aus `jvm/m3-8gb.vmoptions` (**`-Xmx2560M`**, SoftMax 2048)
-- [ ] Mit offenen Apps: `jvm/m3-8gb-shared.vmoptions` (**`-Xmx2048M`**)
-- [ ] **Nie** `-Xmx4G` / `4096M`
+- [ ] Use a native Apple/aarch64 Java 21 runtime.
+- [ ] Start with the instance's documented heap profile; on an 8 GB Mac, avoid treating `-Xmx4G` as a default.
+- [ ] Change one JVM variable at a time and record it with the test run.
 
-## Mod & Config
+## Mods and configuration
 
-- [ ] Alte `m3-frametime-*.jar` raus, **`m3-frametime-1.0.8+1.21.4.jar`** rein
-- [ ] **`config/m3-frametime.json` löschen** (Upgrade! PLAYABLE: RD frei, Wolken/Wetter an)
-- [ ] Stack: Fabric API → Sodium → Lithium → FerriteCore → m3-frametime
+- [ ] Install the exact `siliconflow-<version>+1.21.4.jar` produced for Minecraft 1.21.4.
+- [ ] Keep Fabric API, Sodium, Lithium, FerriteCore, ImmediatelyFast, C2ME, ModernFix, MoreCulling, Sodium Extra, Iris, Cloth Config, and other optional mods at the versions being tested.
+- [ ] Do not assume a mod stack or shader pack is interchangeable across Minecraft versions.
+- [ ] Preserve `config/m3-frametime.json` unless an upgrade note specifically requires resetting it.
 
-## Sodium & Video
+## Sodium and video
 
-- [ ] Chunk Memory Allocator = **`SWAP`** (nicht ASYNC)
-- [ ] Soft-Boost setzt `chunk_builder_threads` ≈ **cores−1** (Sodium-Auto auf M3 oft nur ~2)
-- [ ] Optional: Sodium Extra → Reduce Resolution on macOS → **komplett neu starten**
-- [ ] Render **8–12** (frei einstellbar), Sim **6–8**, VSync **aus**, Max FPS **Unlimited** (`swapInterval=0`)
-- [ ] Keine schweren Iris-Shader
-- [ ] Vollbild → Control Center **Game Mode** (höhere CPU/GPU-Priorität)
+- [ ] On Apple Silicon, test Sodium's `SWAP` chunk memory allocator where applicable; compare against a documented baseline.
+- [ ] If using Sodium Extra's macOS resolution option, restart the game before measuring.
+- [ ] Choose render/simulation distance, VSync, and FPS cap deliberately and record them.
+- [ ] Treat Iris/shader tests as a separate workload; SiliconFlow does not guarantee shader support or performance.
 
-## Check im Spiel
+## In-game verification
 
-- [ ] Log: `ChipPower: renderThread MAX_PRIORITY` + `Sodium worker target=N` + `SodiumSoftBooster: chunk_builder_threads → N`
-- [ ] Log: `Started N worker threads` von Sodium mit N ≈ cores−1 (nicht ~2)
-- [ ] Video → Render Distance lässt sich über 4 hinaus setzen (ohne Dauer-EMERGENCY)
-- [ ] F3: Heap nicht 4G; kein ständiges GC-Sägen; Spike-Panel ohne Dauer-Spikes
-- [ ] Chunk-Flug ohne Multi-100ms-Freezes; Activity Monitor: Java nutzt mehrere Kerne produktiv
-- [ ] Bei gelbem Pressure: auf shared/`-Xmx2G` runter; Mod zeigt F8 `EMERGENCY` (view→4 temporär, danach Restore)
+- [ ] Press F8 and confirm that frame-time samples and the active profile are visible.
+- [ ] If recording is enabled, retain `m3-live-telemetry.json` and the matching configuration.
+- [ ] Confirm that unavailable GPU/VRAM/core-placement values are not being interpreted as measurements.
+- [ ] Repeat the same route and compare median/p95/p99 frame time, not only peak FPS.

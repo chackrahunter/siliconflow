@@ -26,7 +26,7 @@ Client **rendering engine replacement** — do not re-mesh, re-cull terrain, or 
 
 Sodium does **not** own: entity distance policy, HUD element deletion, weather strip skip, sound distance, limb animation throttle, enchantment glint policy, lightmap cadence, Retina/HiDPI policy, JVM/GC, or frame pacing.
 
-**M3 note (1.0.7):** Sodium auto `chunk_builder_threads=0` resolves to `clamp(max(cores/3, cores−6), 1, 10)` — often **~2** on 8-core M3. m3-frametime soft-boosts to **cores−1** (reflection + `sodium-options.json`) so P-cores actually mesh; does not rewrite the mesher.
+**Runtime note:** Sodium worker sizing may be adjusted conservatively when the integration is active. The operating system still controls scheduling and core placement; the mod does not lock workers or the render thread to P-cores.
 
 ---
 
@@ -52,9 +52,9 @@ Lithium does **not** own: GPU fill-rate, entity *render* distance, HUD overlays,
 
 **Memory structure** dedup (client + server) — shrinks heap / GC pressure, not FPS directly.
 
-- Blockstate neighbor **FastMap** + property map replacement  
-- Baked-quad / multipart predicate dedup  
-- Model-side / voxel-shape related caching  
+- Blockstate neighbor **FastMap** + property map replacement
+- Baked-quad / multipart predicate dedup
+- Model-side / voxel-shape related caching
 - Data-component related memory cuts (newer versions)
 
 **Do not** re-implement blockstate maps or model predicate caches.
@@ -71,7 +71,7 @@ Lithium does **not** own: GPU fill-rate, entity *render* distance, HUD overlays,
 | Text / GUI / HUD batching | `hud_batching`, font atlas, fast text lookup |
 | Maps | Map atlas generation |
 | Signs (experimental) | Sign text buffering |
-| **Apple GPU** | `fast_buffer_upload` / Apple-oriented buffer upload path |
+| **Apple-oriented upload path** | `fast_buffer_upload` / platform-specific buffer handling |
 
 **Do not** replace VertexConsumerProvider.Immediate, HUD batching, map atlases, or sign text buffers.
 
@@ -79,7 +79,7 @@ Lithium does **not** own: GPU fill-rate, entity *render* distance, HUD overlays,
 
 ## Still free for m3-frametime (prioritized mixin targets)
 
-Leftovers after Sodium + Lithium + FerriteCore + ImmediatelyFast, ranked for **felt hitch / GPU fill on 8GB M3**. Soft `require = 0`, Sodium-aware where noted.
+Leftovers after Sodium + Lithium + FerriteCore + ImmediatelyFast, ranked for **felt hitch / GPU fill on 8GB M3**. Exact-target injections, Sodium-aware where noted.
 
 ### P0 — implement / keep (high leftover value)
 
@@ -110,19 +110,19 @@ Leftovers after Sodium + Lithium + FerriteCore + ImmediatelyFast, ranked for **f
 
 ### P2 — low / situational
 
-- Chat / tab-list density, toast skip (have), boss bar (opt-in)  
-- Fishing line / leash / painting extras  
-- Status-effect icon density (IF already batches)  
-- Autosave I/O / Spotlight — OS/docs, not mixins  
+- Chat / tab-list density, toast skip (have), boss bar (opt-in)
+- Fishing line / leash / painting extras
+- Status-effect icon density (IF already batches)
+- Autosave I/O / Spotlight — OS/docs, not mixins
 
 ### Vanilla macOS waste the stack still leaves
 
-1. **OpenGL→Metal** translation + buffer flushes (allocator `SWAP` is config, not ours)  
-2. **Retina 2×** framebuffer (~4× pixels)  
-3. **Unified memory / swap** (heap sizing — docs/JVM, not mixins)  
-4. **Broken VSync / ProMotion** (GLFW) — our swapInterval hooks only; pacing OFF  
-5. **Enchantment glint multipass** (P0 #1)  
-6. **Per-frame lightmap rebuild/upload** (P0 #2)  
+1. **OpenGL→Metal** translation + buffer flushes (allocator `SWAP` is config, not ours)
+2. **Retina 2×** framebuffer (~4× pixels)
+3. **Unified memory / swap** (heap sizing — docs/JVM, not mixins)
+4. **Broken VSync / ProMotion** (GLFW) — our swapInterval hooks only; pacing OFF
+5. **Enchantment glint multipass** (P0 #1)
+6. **Per-frame lightmap rebuild/upload** (P0 #2)
 7. **Weather / HUD / far entities** fill and CPU (our existing soft skips)
 
 ---
@@ -139,33 +139,32 @@ Leftovers after Sodium + Lithium + FerriteCore + ImmediatelyFast, ranked for **f
 | Lithium experimental `client_tick.*` ambient/brain/biome-particle | Overlap risk — stay at distance/budget layer |
 | Blockstate FastMap / model predicate dedup | FerriteCore |
 | Immediate buffer impl, HUD/map/sign batching, Apple buffer upload | ImmediatelyFast |
-| Iris shader pipeline (if present) | Unsupported on M-series; don’t patch |
+| Iris shader pipeline (if present) | Treat as a separate compatibility workload; do not patch shader internals |
 | Frame pacing sleep / busy-wait | Explicitly OFF (historical ~10 FPS bug) |
 | Sodium **Chunk Memory Allocator** | User must set `SWAP` on macOS — never override via mixin |
 
 ### Soft-compat rules (m3-frametime)
 
-- All injectors: **`defaultRequire: 0`**  
-- With Sodium: **no aggressive entity frustum redo** — distance only (`StackCompat.useAggressiveEntityFrustum`)  
-- Tiny worker pool when Sodium loaded  
-- Skip `SoundSystemMixin` if Sound Physics / Simple Voice Chat present (`M3MixinPlugin`)  
-- Prefer additive cancels (skip draw / skip spawn) over replacing algorithms  
+- All injectors: **`defaultRequire: 0`**
+- With Sodium: **no aggressive entity frustum redo** — distance only (`StackCompat.useAggressiveEntityFrustum`)
+- Tiny worker pool when Sodium loaded
+- Skip `SoundSystemMixin` if Sound Physics / Simple Voice Chat present (`M3MixinPlugin`)
+- Prefer additive cancels (skip draw / skip spawn) over replacing algorithms
 
 ---
 
 ## Implemented (1.0.4)
 
 ### Gaps filled
-- `ItemStackMixin` + `ItemRendererGlintMixin` — `skipItemGlint`  
-- `LightmapTextureManagerMixin` — `lightmapThrottle`  
-- `LivingEntityPotionSwirlMixin` — `farPotionSwirlSkip`  
-- Existing particle/BE/entity-distance/weather/HUD/sound/limb soft skips  
-- **`RamDiscipline`**: soft cache hints (ScratchPool + particle trim, never `System.gc`), auto emergency under `MemoryPressureProbe`  
-- Soft mipmap / view / sim clamps (emergency tightens further)  
+- `ItemStackMixin` + `ItemRendererGlintMixin` — `skipItemGlint`
+- `LivingEntityPotionSwirlMixin` — `farPotionSwirlSkip`
+- Existing particle/BE/entity-distance/weather/HUD/sound/limb soft skips
+- **`RamDiscipline`**: soft cache hints (ScratchPool + particle trim, never `the JVM collector`), auto emergency under `MemoryPressureProbe`
+- Soft mipmap / view / sim clamps (emergency tightens further)
 
 ### Overlaps improved (amplify, not mesh rewrite)
-- `overrideSodiumEntityCull` (PLAYABLE/MAX): distance + cheap AABB frustum early-out with Sodium  
-- PLAYABLE particle budget (**192** / **40m**; emergency **48** / **20m**) vs Sodium/IF render-only opts  
-- HUD element *deletion* optional (MAX); PLAYABLE keeps clouds/weather/stars/portals/effects  
+- `overrideSodiumEntityCull` (PLAYABLE/MAX): distance + cheap AABB frustum early-out with Sodium
+- PLAYABLE particle budget (**192** / **40m**; emergency **48** / **20m**) vs Sodium/IF render-only opts
+- HUD element *deletion* optional (MAX); PLAYABLE keeps clouds/weather/stars/portals/effects
 - Client-only limb + potion swirl skips (Lithium owns tick *logic*)
 - PLAYABLE: **no hard RD clamp** (user Video setting); emergency view≤**4** temporary + restore; MAX soft ceiling ≤**16**
