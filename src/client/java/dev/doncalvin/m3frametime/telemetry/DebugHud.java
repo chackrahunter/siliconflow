@@ -85,10 +85,10 @@ public final class DebugHud {
 
 		// ==========================================
 		// 1. TOP HEADER PILL
-		// [SILICONFLOW: P-CORE] | [v1.0.11] | [HH:MM:SS]
+		// [SILICONFLOW: P-CORE] | [v1.0.12] | [HH:MM:SS]
 		// ==========================================
 		String timeStr = LocalTime.now().format(TIME_FMT);
-		String headerText = "[SILICONFLOW: P-CORE] | [v1.0.11] | [" + timeStr + "]";
+		String headerText = "[SILICONFLOW: P-CORE] | [v1.0.12] | [" + timeStr + "]";
 		int headerW = tr.getWidth(headerText) + 10;
 		int headerH = 13;
 

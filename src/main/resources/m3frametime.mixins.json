@@ -3,8 +3,10 @@
 	"minVersion": "0.8",
 	"package": "dev.doncalvin.m3frametime.mixin",
 	"compatibilityLevel": "JAVA_21",
-	"mixins": [],
+	"mixins": [
+		"MathHelperMixin"
+	],
 	"injectors": {
-		"defaultRequire": 1
+		"defaultRequire": 0
 	}
 }

@@ -16,7 +16,7 @@
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Minecraft-1.21.4-blue?style=for-the-badge&logo=minecraft&logoColor=white" alt="Minecraft 1.21.4"></a>
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-0.19.3-dbb48c?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric Loader"></a>
   <a href="https://apple.com/"><img src="https://img.shields.io/badge/Apple_Silicon-M1_|_M2_|_M3_|_M4-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Silicon M-Series"></a>
-  <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/badge/Release-v1.0.11-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.11"></a>
+  <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/badge/Release-v1.0.12-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.12"></a>
   <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/Diagnostics-236_Error_Codes-a855f7?style=for-the-badge&logo=matrix&logoColor=white" alt="236 Diagnostic Codes"></a>
   <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/Status-Zero--Stutter_Certified-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Zero-Stutter Certified"></a>
 </p>
@@ -117,7 +117,7 @@ Press **`F8`** in-game to toggle the real-time telemetry overlay:
 
 ```text
 ========================================================================
-⚡ [SILICONFLOW: P-CORE] | [v1.0.11] | [15:23:05]
+⚡ [SILICONFLOW: P-CORE] | [v1.0.12] | [15:23:05]
 FPS: 541.0 [HIGH/STABLE] | FT: 1.8 ms [MIN: 1.1 / MAX: 6.8]
 TPS: 20.0 (SYNCED) | PING: 14 ms
 CPU/GPU: P-CORE AFFINITY: LOCKED | GPU UTIL: 34% | CPU LOAD: 41%
@@ -218,7 +218,7 @@ cd siliconflow
 ./gradlew build
 
 # The compiled artifact is located at:
-# build/libs/siliconflow-1.0.11+1.21.4.jar
+# build/libs/siliconflow-1.0.12+1.21.4.jar
 ```
 
 ---
