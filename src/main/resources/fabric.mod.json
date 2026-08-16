@@ -24,8 +24,8 @@
 	],
 	"depends": {
 		"fabricloader": ">=0.14.0",
-		"minecraft": ">=1.16.5",
-		"java": ">=17"
+		"minecraft": ">=1.14.0",
+		"java": ">=8"
 	},
 	"suggests": {
 		"sodium": "*",
