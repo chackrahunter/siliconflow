@@ -36,7 +36,8 @@
 		"LightmapTextureManagerMixin",
 		"LivingEntityPotionSwirlMixin",
 		"VanillaDebugHudMixin",
-		"GlStateManagerMixin"
+		"GlStateManagerMixin",
+		"FrustumMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0
