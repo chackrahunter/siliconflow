@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="docs/assets/banner.png" alt="M3-Frametime Banner" width="100%" style="border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 242, 254, 0.25);" />
+  <img src="docs/assets/banner.png" alt="SiliconFlow Banner" width="100%" style="border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 242, 254, 0.25);" />
 </p>
 
 <p align="center">
-  <img src="docs/assets/logo.png" alt="M3-Frametime Logo" width="150" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 242, 254, 0.4);" />
+  <img src="docs/assets/logo.png" alt="SiliconFlow Logo" width="160" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(0, 242, 254, 0.4);" />
 </p>
 
-<h1 align="center">⚡ M3-Frametime: Quantum Silicon Engine ⚡</h1>
+<h1 align="center">⚡ SiliconFlow: Apple Silicon Quantum Engine ⚡</h1>
 
 <p align="center">
   <b>Hardcore Low-Level Performance & Zero-Microstutter Engine for Apple Silicon (M1 / M2 / M3 / M4) on Minecraft 1.21.4 (Fabric)</b>
@@ -16,7 +16,7 @@
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Minecraft-1.21.4-blue?style=for-the-badge&logo=minecraft&logoColor=white" alt="Minecraft 1.21.4"></a>
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-0.19.3-dbb48c?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric Loader"></a>
   <a href="https://apple.com/"><img src="https://img.shields.io/badge/Apple_Silicon-M1_|_M2_|_M3_|_M4-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Silicon M-Series"></a>
-  <a href="https://github.com/chackrahunter/m3-frametime/releases"><img src="https://img.shields.io/badge/Release-v1.0.8-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.8"></a>
+  <a href="https://github.com/chackrahunter/m3-frametime/releases"><img src="https://img.shields.io/badge/Release-v1.0.9-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.9"></a>
   <a href="https://github.com/chackrahunter/m3-frametime"><img src="https://img.shields.io/badge/Diagnostics-236_Error_Codes-a855f7?style=for-the-badge&logo=matrix&logoColor=white" alt="236 Diagnostic Codes"></a>
   <a href="https://github.com/chackrahunter/m3-frametime"><img src="https://img.shields.io/badge/Status-Zero--Stutter_Certified-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Zero-Stutter Certified"></a>
 </p>
@@ -33,11 +33,11 @@
 
 ## 🌟 Overview
 
-**M3-Frametime** is a native performance mod specifically engineered for **macOS Darwin on ARM64 Apple Silicon (M1, M2, M3, M4)**. 
+**SiliconFlow** is a native performance engine specifically engineered for **macOS Darwin on ARM64 Apple Silicon (M1, M2, M3, M4)**. 
 
 Standard Minecraft performance mods are designed around generic x86 Windows/Linux architectures and fail to leverage Apple Silicon's unique **Unified Memory Architecture (UMA)**, **TBDR (Tile-Based Deferred Rendering) Metal GPU**, and asymmetric **P-Core / E-Core core topologies**. 
 
-M3-Frametime interacts directly with the **macOS Mach Microkernel** and **Metal Direct Pipelines** to deliver butter-smooth, ultra-high framerates (up to **540–1100+ FPS**) with true **sub-millisecond frametimes** and zero micro-stuttering.
+SiliconFlow interacts directly with the **macOS Mach Microkernel** and **Metal Direct Pipelines** to deliver butter-smooth, ultra-high framerates (up to **540–1100+ FPS**) with true **sub-millisecond frametimes** and zero micro-stuttering.
 
 <p align="center">
   <img src="docs/assets/live_wave.svg" alt="Animated Real-Time Wave Oscillator" width="100%" />
@@ -47,7 +47,7 @@ M3-Frametime interacts directly with the **macOS Mach Microkernel** and **Metal 
 
 ## 🚀 Real In-Game Benchmarks & Live Telemetry (Apple M3 8GB)
 
-| Metric | Vanilla / Generic Modpacks | With M3-Frametime (Quantum Silicon) | Improvement |
+| Metric | Vanilla / Generic Modpacks | With SiliconFlow (Quantum Silicon) | Improvement |
 | :--- | :---: | :---: | :---: |
 | **Live In-Game FPS** | `110 - 140 FPS` | **`541.0 FPS`** *(Peaks up to 1,108 FPS)* | **+400% 🚀** |
 | **Average Frametime** | `17.4 ms` (60 Hz VSync Locked) | **`1.8 ms`** *(Min: 1.1 ms / Max: 6.8 ms)* | **9.6x Faster ⚡** |
@@ -69,7 +69,7 @@ M3-Frametime interacts directly with the **macOS Mach Microkernel** and **Metal 
 
 ### 1. 🧬 Native Mach Kernel Thread Affinity (`THREAD_AFFINITY_POLICY`)
 - macOS Darwin kernel demotes render threads to slow Efficiency Cores when background chunk builders saturate all cores (`SYS-001`).
-- M3-Frametime uses Mach syscalls (`thread_policy_set`) with **`THREAD_AFFINITY_POLICY (Tag 1)`** and **`THREAD_EXTENDED_POLICY (timeshare = 0)`** to lock the Minecraft Render Thread into real-time priority on the **4.05 GHz Performance Cores**.
+- SiliconFlow uses Mach syscalls (`thread_policy_set`) with **`THREAD_AFFINITY_POLICY (Tag 1)`** and **`THREAD_EXTENDED_POLICY (timeshare = 0)`** to lock the Minecraft Render Thread into real-time priority on the **4.05 GHz Performance Cores**.
 - Chunk meshing builder threads are balanced to **3 threads max**, reserving 1 P-Core 100% exclusively for the Render Thread.
 
 ### 2. ⚡ Sodium SWAP Direct-Memory Off-Heap Meshing
@@ -101,7 +101,7 @@ Press **`F8`** in-game to toggle the real-time telemetry overlay:
 
 ```text
 ========================================================================
-⚡ [DEBUG MENU: P-CORE] | [v1.0.8] | [15:23:05]
+⚡ [SILICONFLOW: P-CORE] | [v1.0.9] | [15:23:05]
 FPS: 541.0 [HIGH/STABLE] | FT: 1.8 ms [MIN: 1.1 / MAX: 6.8]
 TPS: 20.0 (SYNCED) | PING: 14 ms
 CPU/GPU: P-CORE AFFINITY: LOCKED | GPU UTIL: 34% | CPU LOAD: 41%
@@ -131,7 +131,7 @@ Status Matrix: [STATUS: OK-000] OPTIMAL PERFORMANCE · P-CORE MACH AFFINITY LOCK
 
 ## 🧩 The Ultimate Companion Mod Stack (Must-Have Mods)
 
-To achieve maximum 200+ FPS stability with extreme shaders on Apple Silicon, install these companion mods alongside **M3-Frametime** in your Fabric `mods/` folder:
+To achieve maximum 200+ FPS stability with extreme shaders on Apple Silicon, install these companion mods alongside **SiliconFlow** in your Fabric `mods/` folder:
 
 | Mod | Version | Purpose for Apple Silicon |
 | :--- | :--- | :--- |
@@ -166,11 +166,11 @@ To achieve maximum 200+ FPS stability with extreme shaders on Apple Silicon, ins
 Navigate to **Options ➔ Video Settings**:
 - **Display**:
   - **Max Framerate**: `Unlimited` *(Unlocks full M3 GPU throughput)*
-  - **VSync**: `OFF` *(M3-Frametime ensures tear-free high refresh pacing)*
+  - **VSync**: `OFF` *(SiliconFlow ensures tear-free high refresh pacing)*
   - **GUI Scale**: `3` or `Auto`
 - **Performance (Sodium Options)**:
   - **Chunk Memory Allocator**: **`SWAP`** *(Bypasses Java heap, uploads VBOs directly to Metal GPU)*
-  - **Chunk Builder Threads**: **`3`** *(Auto-configured by M3-Frametime to guarantee 1 P-Core for Render Thread)*
+  - **Chunk Builder Threads**: **`3`** *(Auto-configured by SiliconFlow to guarantee 1 P-Core for Render Thread)*
   - **Use Compact Vertex Format**: **`ON`** *(Halves geometry data bandwidth)*
   - **Use Block Face Culling**: **`ON`**
   - **Use Fog Occlusion**: **`ON`**
@@ -187,7 +187,7 @@ When using shaders like **Complementary Reimagined**, **BSL**, or **Photon**:
 - **Render Resolution Scaling**: Set to **`0.75x` or `1.0x`**
   - *Why?* Retina displays render at massive resolutions ($3024 \times 1964$). Running shaders at 0.75x looks razor-sharp but cuts GPU power from 25W to 9W, completely eliminating GPU thermal throttling!
 - **Shadow Map Resolution**: `1024` or `2048`
-- **Shadow Distance**: `8 - 12 Chunks` *(M3-Frametime's Sub-Pixel Culling handles the rest)*
+- **Shadow Distance**: `8 - 12 Chunks` *(SiliconFlow's Sub-Pixel Culling handles the rest)*
 
 ---
 
@@ -202,7 +202,7 @@ cd m3-frametime
 ./gradlew build
 
 # The compiled artifact is located at:
-# build/libs/m3-frametime-1.0.8+1.21.4.jar
+# build/libs/siliconflow-1.0.9+1.21.4.jar
 ```
 
 ---

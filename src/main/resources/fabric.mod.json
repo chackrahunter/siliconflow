@@ -2,10 +2,13 @@
 	"schemaVersion": 1,
 	"id": "m3-frametime",
 	"version": "${version}",
-	"name": "M3 Frametime Companion",
-	"description": "Ultra-Performance companion for Apple Silicon M3 8GB: Darwin QoS P-core boost, Iris shader shadow-pass culling, FastMath, Sodium worker soft-boost, soft culls, particle budgets. Not a renderer replacement.",
+	"name": "SiliconFlow",
+	"description": "SiliconFlow: Native Mach-Kernel & Metal TBDR Low-Level Optimization Engine for Apple Silicon (M1/M2/M3/M4) on Minecraft 1.21.4.",
 	"authors": ["Don-Calvin"],
-	"contact": {},
+	"contact": {
+		"homepage": "https://github.com/chackrahunter/m3-frametime",
+		"sources": "https://github.com/chackrahunter/m3-frametime"
+	},
 	"license": "MIT",
 	"environment": "*",
 	"entrypoints": {
@@ -34,7 +37,9 @@
 	},
 	"custom": {
 		"modmenu": {
-			"links": {}
+			"links": {
+				"modmenu.source": "https://github.com/chackrahunter/m3-frametime"
+			}
 		}
 	}
 }
