@@ -1,9 +1,21 @@
 # SiliconFlow
 
-Frame-time telemetry and optional client-side render optimizations for Apple Silicon Macs running Fabric Minecraft.
+<p align="center">
+  <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub repository"></a>
+  <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/github/v/release/chackrahunter/siliconflow?display_name=tag&style=for-the-badge&label=Latest%20release" alt="Latest release"></a>
+  <a href="https://www.minecraft.net/"><img src="https://img.shields.io/badge/Minecraft-1.21.4-5E7D3A?style=for-the-badge&logo=minecraft&logoColor=white" alt="Minecraft 1.21.4"></a>
+  <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-1.21.4-DBB48C?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric for Minecraft 1.21.4"></a>
+  <a href="https://support.apple.com/en-us/116943"><img src="https://img.shields.io/badge/Apple%20Silicon-Mac-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Silicon Mac"></a>
+  <img src="https://img.shields.io/badge/Status-Beta-F59E0B?style=for-the-badge" alt="Beta status">
+</p>
 
-> This repository currently builds one version-specific artifact: **Minecraft 1.21.4**.
-> It does not provide a universal JAR for all Minecraft versions, and it does not guarantee an FPS or stutter outcome.
+<p align="center">
+  Frame-time telemetry and optional client-side render optimizations for Apple Silicon Macs running Fabric Minecraft.
+</p>
+
+> **Beta software:** SiliconFlow is currently in beta. Expect changes, report issues with your exact Minecraft/Fabric setup, and treat telemetry as diagnostic output rather than a performance guarantee.
+>
+> This repository currently builds one version-specific artifact: **Minecraft 1.21.4**. It does not provide a universal JAR for all Minecraft versions.
 
 ## What it does
 
