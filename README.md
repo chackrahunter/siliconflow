@@ -7,6 +7,8 @@
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-1.21.4-DBB48C?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric for Minecraft 1.21.4"></a>
   <a href="https://support.apple.com/en-us/116943"><img src="https://img.shields.io/badge/Apple%20Silicon-Mac-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Silicon Mac"></a>
   <img src="https://img.shields.io/badge/Status-Beta-F59E0B?style=for-the-badge" alt="Beta status">
+  <a href="https://ko-fi.com/chackrahunter"><img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Support on Ko-fi"></a>
+  <a href="https://www.paypal.me/Donsko2007"><img src="https://img.shields.io/badge/Donate-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
 </p>
 
 <p align="center">
@@ -86,6 +88,19 @@ Delete an obsolete `config/m3-frametime.json` only when upgrading if the release
 ```
 
 The build compiles the exact `1.21.4` target and deploys the remapped JAR to the named Prism instance. A successful copy into a differently-versioned instance is not compatibility evidence. The artifact is written to `build/libs/` with the project version from `gradle.properties`.
+
+## Support the project
+
+If SiliconFlow is useful to you, you can support its continued development through either of these verified donation links:
+
+<p align="center">
+  <a href="https://ko-fi.com/chackrahunter"><img src="https://img.shields.io/badge/Support_on-Ko--fi-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white" alt="Support on Ko-fi"></a>
+  &nbsp;
+  <a href="https://www.paypal.me/Donsko2007"><img src="https://img.shields.io/badge/Donate_with-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
+</p>
+
+- [Support on Ko-fi](https://ko-fi.com/chackrahunter)
+- [Donate with PayPal](https://www.paypal.me/Donsko2007)
 
 ## License
 
