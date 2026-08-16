@@ -11,13 +11,10 @@ import java.util.Set;
 
 /**
  * Universal Multi-Version Mixin Controller for SiliconFlow.
- * Dynamically queries the running Minecraft version and probes target classes before applying mixins.
- * Prevents class-not-found crashes on older Minecraft versions (1.16.5–1.21.1) while maintaining
- * full zero-overhead native Mach kernel and FastMath optimizations everywhere.
+ * Dynamically queries the running Minecraft version using pure metadata and enables/disables mixins
+ * without loading any target classes into the KnotClassLoader prematurely.
  */
 public final class M3MixinPlugin implements IMixinConfigPlugin {
-	private static final boolean RENDER_STATE_SUPPORTED = VersionDetector.isClassPresent("net.minecraft.client.render.entity.state.EntityRenderState");
-	private static final boolean DRAW_CONTEXT_SUPPORTED = VersionDetector.isClassPresent("net.minecraft.client.gui.DrawContext");
 
 	@Override
 	public void onLoad(String mixinPackage) {}
@@ -29,6 +26,8 @@ public final class M3MixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+		VersionDetector vd = VersionDetector.get();
+
 		// 1. RenderState DTO architecture check (Minecraft 1.21.2 - 1.21.4+)
 		if (mixinClassName.endsWith("EntityRendererMixin")
 			|| mixinClassName.endsWith("EntityShadowMixin")
@@ -36,7 +35,7 @@ public final class M3MixinPlugin implements IMixinConfigPlugin {
 			|| mixinClassName.endsWith("ArmorStandEntityRendererMixin")
 			|| mixinClassName.endsWith("ExperienceOrbEntityRendererMixin")
 			|| mixinClassName.endsWith("ItemEntityRendererMixin")) {
-			if (!RENDER_STATE_SUPPORTED) {
+			if (!vd.isRenderStateEra()) {
 				// Running on MC <= 1.21.1: cleanly bypass RenderState-specific mixins
 				return false;
 			}
@@ -46,7 +45,7 @@ public final class M3MixinPlugin implements IMixinConfigPlugin {
 		if (mixinClassName.endsWith("InGameOverlayRendererMixin")
 			|| mixinClassName.endsWith("BossBarHudMixin")
 			|| mixinClassName.endsWith("ToastManagerMixin")) {
-			if (!DRAW_CONTEXT_SUPPORTED) {
+			if (!vd.isDrawContextEra()) {
 				return false;
 			}
 		}
@@ -59,8 +58,7 @@ public final class M3MixinPlugin implements IMixinConfigPlugin {
 			}
 		}
 
-		// 4. Verify that target class exists in the active classpath
-		return VersionDetector.isClassPresent(targetClassName);
+		return true;
 	}
 
 	@Override

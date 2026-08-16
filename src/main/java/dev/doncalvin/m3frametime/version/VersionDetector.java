@@ -9,7 +9,8 @@ import java.util.Optional;
 
 /**
  * Universal runtime Minecraft version detector and capability evaluator for SiliconFlow.
- * Automatically adapts mixins and render pipelines across Minecraft versions (1.16.5 up to 1.21.4+).
+ * Uses pure metadata-based version parsing without loading any Minecraft classes into the JVM,
+ * ensuring zero MixinTargetAlreadyLoadedException issues during preLaunch.
  */
 public final class VersionDetector {
 	private static final VersionDetector INSTANCE = new VersionDetector();
@@ -18,9 +19,6 @@ public final class VersionDetector {
 	private final int minor;
 	private final int patch;
 	private final String rawVersion;
-	private final boolean hasEntityRenderState;
-	private final boolean hasDrawContext;
-	private final boolean hasModernGl;
 
 	private VersionDetector() {
 		String detectedVersion = "1.21.4"; // Default fallback
@@ -53,19 +51,12 @@ public final class VersionDetector {
 		this.patch = pat;
 		this.rawVersion = detectedVersion;
 
-		// Probe capability classes safely via reflection
-		this.hasEntityRenderState = isClassPresent("net.minecraft.client.render.entity.state.EntityRenderState");
-		this.hasDrawContext = isClassPresent("net.minecraft.client.gui.DrawContext");
-		this.hasModernGl = isClassPresent("net.minecraft.client.render.BufferRenderer");
-
 		M3FrametimeMod.LOGGER.info(
-			"SiliconFlow Version Engine: Detected Minecraft {} (Major={}, Minor={}, Patch={}) | RenderState Era={} | DrawContext Era={}",
+			"SiliconFlow Version Engine: Active Minecraft {} (Major={}, Minor={}, Patch={})",
 			this.rawVersion,
 			this.major,
 			this.minor,
-			this.patch,
-			this.hasEntityRenderState,
-			this.hasDrawContext
+			this.patch
 		);
 	}
 
@@ -110,26 +101,16 @@ public final class VersionDetector {
 
 	/** Returns true if running on Minecraft 1.21.2+ with RenderState DTO architecture. */
 	public boolean isRenderStateEra() {
-		return hasEntityRenderState || isAtLeast(1, 21, 2);
+		return isAtLeast(1, 21, 2);
 	}
 
 	/** Returns true if running on Minecraft 1.20+ with DrawContext GUI architecture. */
 	public boolean isDrawContextEra() {
-		return hasDrawContext || isAtLeast(1, 20, 0);
+		return isAtLeast(1, 20, 0);
 	}
 
 	/** Returns true if running on Minecraft 1.17+ with modern OpenGL 3.2 core profile. */
 	public boolean isModernGl() {
-		return hasModernGl || isAtLeast(1, 17, 0);
-	}
-
-	/** Probes whether a specific class exists in the active JVM classpath without triggering static initialization. */
-	public static boolean isClassPresent(String className) {
-		try {
-			Class.forName(className, false, VersionDetector.class.getClassLoader());
-			return true;
-		} catch (Throwable ignored) {
-			return false;
-		}
+		return isAtLeast(1, 17, 0);
 	}
 }
