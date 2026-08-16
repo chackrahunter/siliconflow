@@ -16,9 +16,9 @@
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Minecraft-1.21.4-blue?style=for-the-badge&logo=minecraft&logoColor=white" alt="Minecraft 1.21.4"></a>
   <a href="https://fabricmc.net/"><img src="https://img.shields.io/badge/Fabric-0.19.3-dbb48c?style=for-the-badge&logo=fabric&logoColor=white" alt="Fabric Loader"></a>
   <a href="https://apple.com/"><img src="https://img.shields.io/badge/Apple_Silicon-M1_|_M2_|_M3_|_M4-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Apple Silicon M-Series"></a>
-  <a href="https://github.com/chackrahunter/m3-frametime/releases"><img src="https://img.shields.io/badge/Release-v1.0.10-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.10"></a>
-  <a href="https://github.com/chackrahunter/m3-frametime"><img src="https://img.shields.io/badge/Diagnostics-236_Error_Codes-a855f7?style=for-the-badge&logo=matrix&logoColor=white" alt="236 Diagnostic Codes"></a>
-  <a href="https://github.com/chackrahunter/m3-frametime"><img src="https://img.shields.io/badge/Status-Zero--Stutter_Certified-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Zero-Stutter Certified"></a>
+  <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/badge/Release-v1.0.10-00f2fe?style=for-the-badge&logo=github&logoColor=black" alt="Release v1.0.10"></a>
+  <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/Diagnostics-236_Error_Codes-a855f7?style=for-the-badge&logo=matrix&logoColor=white" alt="236 Diagnostic Codes"></a>
+  <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/Status-Zero--Stutter_Certified-10b981?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Zero-Stutter Certified"></a>
 </p>
 
 <p align="center">
@@ -211,8 +211,8 @@ When using shaders like **Complementary Reimagined**, **BSL**, or **Photon**:
 
 ```bash
 # Clone the repository
-git clone https://github.com/chackrahunter/m3-frametime.git
-cd m3-frametime
+git clone https://github.com/chackrahunter/siliconflow.git
+cd siliconflow
 
 # Build and create production JAR
 ./gradlew build

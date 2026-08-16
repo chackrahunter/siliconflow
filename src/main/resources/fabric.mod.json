@@ -6,8 +6,8 @@
 	"description": "SiliconFlow: Native Mach-Kernel & Metal TBDR Low-Level Optimization Engine for Apple Silicon (M1/M2/M3/M4) on Minecraft 1.21.4.",
 	"authors": ["Don-Calvin"],
 	"contact": {
-		"homepage": "https://github.com/chackrahunter/m3-frametime",
-		"sources": "https://github.com/chackrahunter/m3-frametime"
+		"homepage": "https://github.com/chackrahunter/siliconflow",
+		"sources": "https://github.com/chackrahunter/siliconflow"
 	},
 	"license": "MIT",
 	"environment": "*",
@@ -38,7 +38,7 @@
 	"custom": {
 		"modmenu": {
 			"links": {
-				"modmenu.source": "https://github.com/chackrahunter/m3-frametime"
+				"modmenu.source": "https://github.com/chackrahunter/siliconflow"
 			}
 		}
 	}
