@@ -23,10 +23,6 @@ public abstract class MinecraftClientMixin {
 	@Inject(method = "render", at = @At("HEAD"), require = 0)
 	private void m3frametime$beginFrame(boolean tick, CallbackInfo ci) {
 		ChipPower.applyOnce();
-		// Re-affirm Mach QoS every ~128 frames (~1 second) to permanently prevent P->E core migration
-		if ((++m3frametime$prioTick & 127) == 0 && M3FrametimeMod.config().boostDarwinQos) {
-			DarwinQos.boostRenderThread();
-		}
 		ClientDistance.invalidate();
 		SpikeScope.get().resetFrame();
 		FramePacer.get().beginFrame();

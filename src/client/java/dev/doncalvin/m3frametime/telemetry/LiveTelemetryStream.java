@@ -31,7 +31,7 @@ public final class LiveTelemetryStream {
 	}
 
 	public void sampleAndStream(long nowNanos) {
-		if (writing || nowNanos - lastWriteNanos < 500_000_000L) { // Stream at 2 Hz
+		if (writing || !M3FrametimeMod.config().spikeLogging || nowNanos - lastWriteNanos < 2_000_000_000L) { // Stream only when enabled at 0.5 Hz
 			return;
 		}
 		lastWriteNanos = nowNanos;
