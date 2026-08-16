@@ -31,6 +31,7 @@ public abstract class MinecraftClientMixin {
 		SpikeScope.get().resetFrame();
 		FramePacer.get().beginFrame();
 		FramePacer.get().updateEma(M3FrametimeMod.config().pacingEmaAlpha);
+		dev.doncalvin.m3frametime.telemetry.DebugHud.get().onFrameTick();
 	}
 
 	@Inject(method = "render", at = @At("RETURN"), require = 0)
