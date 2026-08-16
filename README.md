@@ -40,6 +40,68 @@ M3-Frametime interacts directly with the **macOS Mach Microkernel** and **Metal 
 
 ---
 
+## 🧩 The Ultimate Companion Mod Stack (Must-Have Mods)
+
+To achieve maximum 200+ FPS stability with extreme shaders on Apple Silicon, install these companion mods alongside **M3-Frametime** in your Fabric `mods/` folder:
+
+| Mod | Version | Purpose for Apple Silicon |
+| :--- | :--- | :--- |
+| **[Sodium](https://modrinth.com/mod/sodium)** | `0.6.13+` | Next-gen SIMD chunk meshing & rendering pipeline. |
+| **[Iris Shaders](https://modrinth.com/mod/iris)** | `1.8.8+` | Modern shader pipeline integrated directly with Metal TBDR. |
+| **[Lithium](https://modrinth.com/mod/lithium)** | `0.14.0+` | Physics, entity AI, and world tick optimizations on E-Cores. |
+| **[FerriteCore](https://modrinth.com/mod/ferrite-core)** | `7.0.0+` | Compresses blockstates and models, saving ~1 GB of RAM. |
+| **[ImmediatelyFast](https://modrinth.com/mod/immediatelyfast)** | `1.3.0+` | Batches HUD, text, and GUI draw calls directly on GPU. |
+| **[ModernFix](https://modrinth.com/mod/modernfix)** | `5.19.0+` | Eliminates memory leaks and speeds up world loading. |
+| **[C2ME](https://modrinth.com/mod/c2me-fabric)** | `0.3.0+` | Multi-threaded chunk generation utilizing all 8 CPU cores. |
+| **[EntityCulling](https://modrinth.com/mod/entityculling)** | `1.7.0+` | Skips entity rendering behind walls via fast async raytracing. |
+
+---
+
+## ⚙️ Optimal In-Game & Launcher Settings Guide
+
+### 1. Prism Launcher / Modrinth Settings (RAM & Java)
+> [!IMPORTANT]
+> On an **8 GB Apple Silicon Mac**, setting the RAM too high (e.g. 4+ GB) forces macOS to compress memory and use the SSD swapfile, causing 100ms micro-stutters!
+- **Memory Allocation**:
+  - **Minimum Memory**: `1536 MB` (`-Xms1536m`)
+  - **Maximum Memory**: `2560 MB` (`-Xmx2560m`) *(Sweet Spot for 8GB Macs!)*
+- **Java Runtime**: **Java 21 (ARM64 / aarch64 native)** (e.g. Azul Zulu or Eclipse Temurin ARM64).
+- **JVM Arguments**:
+```bash
+-XX:+UseZGC -XX:+ZGenerational -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:+UnlockExperimentalVMOptions
+```
+
+---
+
+### 2. Video Settings (Sodium & Graphics)
+Navigate to **Options ➔ Video Settings**:
+- **Display**:
+  - **Max Framerate**: `Unlimited` *(Unlocks full M3 GPU throughput)*
+  - **VSync**: `OFF` *(M3-Frametime ensures tear-free high refresh pacing)*
+  - **GUI Scale**: `3` or `Auto`
+- **Performance (Sodium Options)**:
+  - **Chunk Memory Allocator**: **`SWAP`** *(Bypasses Java heap, uploads VBOs directly to Metal GPU)*
+  - **Chunk Builder Threads**: **`3`** *(Auto-configured by M3-Frametime to guarantee 1 P-Core for Render Thread)*
+  - **Use Compact Vertex Format**: **`ON`** *(Halves geometry data bandwidth)*
+  - **Use Block Face Culling**: **`ON`**
+  - **Use Fog Occlusion**: **`ON`**
+- **Quality**:
+  - **Graphics**: `Fast` or `Fancy`
+  - **Clouds**: `Fast` or `Off`
+  - **Particles**: `Decreased` or `Minimal`
+  - **Biome Blend**: `0` (Off) or `2x2`
+
+---
+
+### 3. Iris Shader Settings (For Extreme Shaders)
+When using shaders like **Complementary Reimagined**, **BSL**, or **Photon**:
+- **Render Resolution Scaling**: Set to **`0.75x` or `1.0x`**
+  - *Why?* Retina displays render at massive resolutions ($3024 \times 1964$). Running shaders at 0.75x looks razor-sharp but cuts GPU power from 25W to 9W, completely eliminating GPU thermal throttling!
+- **Shadow Map Resolution**: `1024` or `2048`
+- **Shadow Distance**: `8 - 12 Chunks` *(M3-Frametime's Sub-Pixel Culling handles the rest)*
+
+---
+
 ## 🔬 Core Architectural Innovations
 
 ### 1. 🧬 Native Mach Kernel Thread Affinity (`THREAD_AFFINITY_POLICY`)
@@ -103,25 +165,6 @@ Micro-Stutter Diagnosis: [OK-000] OPTIMAL PERFORMANCE (0 stutters)
 - **`SND-001..015`**: OpenAL Audio Channel Exhaustion & Sync Stalls.
 - **`SYS-001..020`**: Mach Kernel Scheduling, Display Server IPC & QoS Demotion.
 - **`OK-000`**: Complete System Health & Sub-Millisecond Frame Delivery.
-
----
-
-## 🛠️ Installation & Optimal Configuration
-
-### 1. Requirements
-- **Hardware**: Mac with Apple Silicon (`M1`, `M1 Pro/Max/Ultra`, `M2`, `M3`, `M3 Pro/Max`, `M4`).
-- **Software**: macOS 14 (Sonoma) / macOS 15 (Sequoia) / macOS 16 (Tahoe).
-- **Minecraft**: `1.21.4` with **Fabric Loader `0.19.3+`**.
-- **Recommended Mods**: Sodium `0.6.13+`, Iris Shaders `1.8.8+`, Lithium, FerriteCore, ImmediatelyFast, ModernFix.
-
-### 2. Recommended JVM Arguments for Apple Silicon
-In Prism Launcher / Modrinth / CurseForge, set:
-- **Java Runtime**: Java 21 (ARM64 Native)
-- **Memory Allocation**: Minimum: `1536 MB`, Maximum: `2560 MB` (or `3072 MB` for heavy modpacks).
-- **JVM Flags**:
-```bash
--XX:+UseZGC -XX:+ZGenerational -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:+UnlockExperimentalVMOptions
-```
 
 ---
 
