@@ -11,8 +11,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Client-only limb animation throttle for far living entities.
- * Guards with world.isClient so integrated-server ticks (and Lithium) are untouched.
+ * Client-only limb animation throttle for far and stationary living entities.
+ * Saves trigonometric computations and bone matrix calculations in animal pens and trading halls.
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityLimbMixin {
@@ -22,6 +22,16 @@ public abstract class LivingEntityLimbMixin {
 		if (!self.getWorld().isClient || self instanceof PlayerEntity) {
 			return;
 		}
+
+		// 1. Stationary entity optimization: when idle, skip 7/8 limb ticks
+		if (self.getVelocity().lengthSquared() < 0.0001) {
+			if ((self.age & 7) != 0) {
+				ci.cancel();
+				return;
+			}
+		}
+
+		// 2. Far entity distance throttle
 		M3Config cfg = M3FrametimeMod.config();
 		if (!cfg.farLimbThrottle || cfg.farLimbDistance <= 0.0) {
 			return;
