@@ -137,11 +137,11 @@ public final class DebugHud {
 
 		// ==========================================
 		// 1. TOP HEADER PILL
-		// [SILICONFLOW: P-CORE] | [v1.0.29 · MC ...] | [HH:MM:SS]
+		// [SILICONFLOW: P-CORE] | [v1.0.30 · MC ...] | [HH:MM:SS]
 		// ==========================================
 		String mcVer = dev.doncalvin.m3frametime.version.VersionDetector.get().getRawVersion();
 		String timeStr = LocalTime.now().format(TIME_FMT);
-		String headerText = "[SILICONFLOW: P-CORE] | [v1.0.29 · MC " + mcVer + "] | [" + timeStr + "]";
+		String headerText = "[SILICONFLOW: P-CORE] | [v1.0.30 · MC " + mcVer + "] | [" + timeStr + "]";
 		int headerW = tr.getWidth(headerText) + 10;
 		int headerH = 13;
 
