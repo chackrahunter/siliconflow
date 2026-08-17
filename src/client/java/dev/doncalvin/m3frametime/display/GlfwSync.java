@@ -9,7 +9,7 @@ import org.lwjgl.glfw.GLFW;
  * Caches refresh rate to prevent expensive CoreGraphics/WindowServer IPC on every frame.
  */
 public final class GlfwSync {
-	private static boolean applied;
+	private static int appliedInterval = Integer.MIN_VALUE;
 	private static int cachedHz = 60;
 	private static long lastQueryNanos;
 	private static long lastHandle;
@@ -17,17 +17,20 @@ public final class GlfwSync {
 	private GlfwSync() {}
 
 	public static void applyIfConfigured(long windowHandle) {
-		if (applied || windowHandle == 0L) {
+		if (windowHandle == 0L) {
 			return;
 		}
 		int interval = M3FrametimeMod.config().swapInterval;
 		if (interval < 0) {
+			// Minecraft/Iris owns swap state when unset; do not retain our old gate.
+			appliedInterval = Integer.MIN_VALUE;
 			return;
 		}
+		if (interval == appliedInterval) return;
 		try {
 			GLFW.glfwSwapInterval(interval);
-			M3FrametimeMod.LOGGER.info("Applied glfwSwapInterval={} (Uncapped M3 Metal Pipeline)", interval);
-			applied = true;
+			M3FrametimeMod.LOGGER.info("Applied glfwSwapInterval={}", interval);
+			appliedInterval = interval;
 		} catch (Throwable t) {
 			M3FrametimeMod.LOGGER.warn("glfwSwapInterval failed: {}", t.toString());
 		}

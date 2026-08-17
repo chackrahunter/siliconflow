@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 /**
  * Force glint consumers off when skipItemGlint — covers call sites that
  * pass an explicit glint boolean instead of consulting ItemStack.hasGlint.
- * Soft require=0; does not touch ImmediatelyFast batching.
+ * Exact-target injection; does not touch ImmediatelyFast batching.
  */
 @Mixin(ItemRenderer.class)
 public abstract class ItemRendererGlintMixin {
@@ -17,8 +17,7 @@ public abstract class ItemRendererGlintMixin {
 		method = "getItemGlintConsumer",
 		at = @At("HEAD"),
 		argsOnly = true,
-		ordinal = 1,
-		require = 0
+		ordinal = 1
 	)
 	private static boolean m3frametime$forceItemGlintOff(boolean glint) {
 		return glint && !RamDiscipline.get().skipItemGlint();
@@ -28,8 +27,7 @@ public abstract class ItemRendererGlintMixin {
 		method = "getArmorGlintConsumer",
 		at = @At("HEAD"),
 		argsOnly = true,
-		ordinal = 0,
-		require = 0
+		ordinal = 0
 	)
 	private static boolean m3frametime$forceArmorGlintOff(boolean glint) {
 		return glint && !RamDiscipline.get().skipItemGlint();

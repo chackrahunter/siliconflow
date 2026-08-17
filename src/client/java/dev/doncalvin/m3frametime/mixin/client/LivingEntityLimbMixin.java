@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityLimbMixin {
-	@Inject(method = "updateLimbs(Z)V", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "updateLimbs(Z)V", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$throttleFarLimbs(boolean flutter, CallbackInfo ci) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (!self.getWorld().isClient || self instanceof PlayerEntity) {

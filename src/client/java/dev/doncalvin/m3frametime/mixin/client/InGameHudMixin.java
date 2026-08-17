@@ -14,14 +14,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Soft-skip fullscreen HUD overlays that cost fill-rate on Retina GL→Metal. */
 @Mixin(InGameHud.class)
 public abstract class InGameHudMixin {
-	@Inject(method = "renderVignetteOverlay", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderVignetteOverlay", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipVignette(DrawContext context, Entity entity, CallbackInfo ci) {
 		if (RamDiscipline.get().skipVignette()) {
 			ci.cancel();
 		}
 	}
 
-	@Inject(method = "renderNauseaOverlay", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderNauseaOverlay", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipNausea(DrawContext context, float nauseaStrength, CallbackInfo ci) {
 		if (RamDiscipline.get().skipNauseaOverlay()) {
 			ci.cancel();
@@ -31,8 +31,7 @@ public abstract class InGameHudMixin {
 	@Inject(
 		method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
 		at = @At("HEAD"),
-		cancellable = true,
-		require = 0
+		cancellable = true
 	)
 	private void m3frametime$skipSidebar(DrawContext context, ScoreboardObjective objective, CallbackInfo ci) {
 		if (RamDiscipline.get().skipScoreboard()) {
@@ -43,8 +42,7 @@ public abstract class InGameHudMixin {
 	@Inject(
 		method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V",
 		at = @At("HEAD"),
-		cancellable = true,
-		require = 0
+		cancellable = true
 	)
 	private void m3frametime$skipSidebarTick(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
 		if (RamDiscipline.get().skipScoreboard()) {
@@ -52,21 +50,21 @@ public abstract class InGameHudMixin {
 		}
 	}
 
-	@Inject(method = "renderPortalOverlay", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderPortalOverlay", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipPortal(DrawContext context, float nauseaStrength, CallbackInfo ci) {
 		if (RamDiscipline.get().skipPortalOverlay()) {
 			ci.cancel();
 		}
 	}
 
-	@Inject(method = "renderStatusEffectOverlay", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderStatusEffectOverlay", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipStatusEffects(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
 		if (RamDiscipline.get().skipStatusEffectOverlay()) {
 			ci.cancel();
 		}
 	}
 
-	@Inject(method = "renderDemoTimer", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderDemoTimer", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipDemo(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
 		if (RamDiscipline.get().skipDemoOverlay()) {
 			ci.cancel();

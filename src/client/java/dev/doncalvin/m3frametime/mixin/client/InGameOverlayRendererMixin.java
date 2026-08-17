@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(InGameOverlayRenderer.class)
 public abstract class InGameOverlayRendererMixin {
-	@Inject(method = "renderUnderwaterOverlay", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderUnderwaterOverlay", at = @At("HEAD"), cancellable = true)
 	private static void m3frametime$skipUnderwater(
 		MinecraftClient client,
 		MatrixStack matrices,
@@ -30,7 +30,7 @@ public abstract class InGameOverlayRendererMixin {
 		}
 	}
 
-	@Inject(method = "renderInWallOverlay", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderInWallOverlay", at = @At("HEAD"), cancellable = true)
 	private static void m3frametime$skipInWall(
 		Sprite sprite,
 		MatrixStack matrices,
@@ -42,7 +42,7 @@ public abstract class InGameOverlayRendererMixin {
 		}
 	}
 
-	@Inject(method = "renderFireOverlay", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderFireOverlay", at = @At("HEAD"), cancellable = true)
 	private static void m3frametime$skipFire(
 		MatrixStack matrices,
 		VertexConsumerProvider vertexConsumers,

@@ -4,9 +4,11 @@ import dev.doncalvin.m3frametime.M3FrametimeMod;
 import dev.doncalvin.m3frametime.client.ChipPower;
 import dev.doncalvin.m3frametime.client.ClientDistance;
 import dev.doncalvin.m3frametime.client.DarwinQos;
+import dev.doncalvin.m3frametime.config.FrameConfigCache;
 import dev.doncalvin.m3frametime.pacing.FramePacer;
 import dev.doncalvin.m3frametime.telemetry.GcProbe;
 import dev.doncalvin.m3frametime.telemetry.SpikeMonitor;
+import dev.doncalvin.m3frametime.telemetry.PerformanceRecorder;
 import dev.doncalvin.m3frametime.telemetry.SpikeScope;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,20 +22,22 @@ public abstract class MinecraftClientMixin {
 	@Unique
 	private int m3frametime$prioTick;
 
-	@Inject(method = "render", at = @At("HEAD"), require = 0)
+	@Inject(method = "render", at = @At("HEAD"), require = 1)
 	private void m3frametime$beginFrame(boolean tick, CallbackInfo ci) {
 		ChipPower.applyOnce();
 		ClientDistance.invalidate();
+		FrameConfigCache.get().refresh();
 		SpikeScope.get().resetFrame();
 		FramePacer.get().beginFrame();
 		FramePacer.get().updateEma(M3FrametimeMod.config().pacingEmaAlpha);
 		dev.doncalvin.m3frametime.telemetry.DebugHud.get().onFrameTick();
 	}
 
-	@Inject(method = "render", at = @At("RETURN"), require = 0)
+	@Inject(method = "render", at = @At("RETURN"), require = 1)
 	private void m3frametime$endFrame(boolean tick, CallbackInfo ci) {
 		GcProbe.get().sampleFrame();
 		SpikeMonitor.get().onFrameEnd(FramePacer.get().lastDeltaNanos());
+		PerformanceRecorder.get().sampleDiagnostics();
 		if (M3FrametimeMod.config().pacingEnabled) {
 			FramePacer.get().paceIfNeeded(true);
 		}

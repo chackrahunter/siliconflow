@@ -1,5 +1,7 @@
 package dev.doncalvin.m3frametime.pacing;
 
+import java.util.concurrent.locks.LockSupport;
+
 /**
  * Sub-millisecond frame delta tracker with EMA smoothing and optional pace-to-refresh.
  * Does not replace Minecraft's main loop — measures and optionally sleeps after swap.
@@ -74,10 +76,9 @@ public final class FramePacer {
 		if (sleepNanos > 0) {
 			long millis = sleepNanos / 1_000_000L;
 			int nanos = (int) (sleepNanos % 1_000_000L);
-			try {
-				Thread.sleep(millis, nanos);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
+			LockSupport.parkNanos(sleepNanos);
+			if (Thread.interrupted()) {
+				return;
 			}
 		}
 		while (System.nanoTime() - lastFrameNanos < targetFrameNanos) {

@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(WorldRenderer.class)
 public abstract class WorldRendererMixin {
-	@Inject(method = "addWeatherParticlesAndSound", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "addWeatherParticlesAndSound", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipWeather(Camera camera, CallbackInfo ci) {
 		if (RamDiscipline.get().skipWeatherParticles()) {
 			ci.cancel();
@@ -21,7 +21,7 @@ public abstract class WorldRendererMixin {
 	}
 
 	/** Rain/snow strip pass — leftover when Sodium keeps vanilla weather. Soft require. */
-	@Inject(method = "renderWeather", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderWeather", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipWeatherGeometry(
 		net.minecraft.client.render.FrameGraphBuilder frameGraphBuilder,
 		net.minecraft.util.math.Vec3d cameraPos,

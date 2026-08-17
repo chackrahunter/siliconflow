@@ -22,6 +22,10 @@ public final class MemoryPressureProbe {
 	private final AtomicBoolean heapPressure = new AtomicBoolean(false);
 	private final AtomicBoolean sampling = new AtomicBoolean(false);
 	private volatile long lastSampleNanos;
+	private volatile long pressureSinceNanos;
+	private volatile long lastSuccessfulSampleNanos;
+	private volatile boolean pressureObserved;
+	private volatile long lastPhysicalSampleNanos;
 
 	private MemoryPressureProbe() {}
 
@@ -31,7 +35,8 @@ public final class MemoryPressureProbe {
 
 	public void requestSample() {
 		long now = System.nanoTime();
-		if (now - lastSampleNanos < 250_000_000L) {
+		if (!M3FrametimeMod.config().memoryPolicyEnabled) return;
+		if (now - lastSampleNanos < 500_000_000L) {
 			return;
 		}
 		if (!sampling.compareAndSet(false, true)) {
@@ -52,6 +57,8 @@ public final class MemoryPressureProbe {
 			sampleHeap();
 			var bean = ManagementFactory.getOperatingSystemMXBean();
 			if (bean instanceof OperatingSystemMXBean os) {
+				lastSuccessfulSampleNanos = System.nanoTime();
+				lastPhysicalSampleNanos = lastSuccessfulSampleNanos;
 				long free = os.getFreeMemorySize();
 				long total = os.getTotalMemorySize();
 				if (free >= 0) {
@@ -60,8 +67,17 @@ public final class MemoryPressureProbe {
 				if (total >= 0) {
 					totalPhysicalMb.set(total / (1024L * 1024L));
 				}
-				// On macOS Darwin, free physical pages are cached by the OS page cache. Only flag real pressure < 32MB.
-				pressure.set(free >= 0 && (free / (1024L * 1024L)) < 32L);
+				long freeMb = free / (1024L * 1024L);
+				// The configured threshold is a diagnostic guardrail, not a settings controller.
+				double thresholdMb = M3FrametimeMod.config().memoryPressureFreeMbThreshold;
+				boolean pressured = freeMb >= 0L && freeMb < Math.max(0.0, thresholdMb);
+				boolean wasPressured = pressure.getAndSet(pressured);
+				if (pressured) pressureObserved = true;
+				if (pressured && !wasPressured) {
+					pressureSinceNanos = System.nanoTime();
+				} else if (!pressured) {
+					pressureSinceNanos = 0L;
+				}
 			}
 		} catch (Throwable t) {
 			M3FrametimeMod.LOGGER.debug("Memory probe failed: {}", t.toString());
@@ -80,15 +96,45 @@ public final class MemoryPressureProbe {
 	}
 
 	public boolean underPressure() {
-		return pressure.get() || heapPressure.get();
+		return isFresh() && (pressure.get() || heapPressure.get());
 	}
 
 	public boolean physicalUnderPressure() {
-		return pressure.get();
+		return isFresh() && pressure.get();
 	}
 
 	public boolean heapUnderPressure() {
 		return heapPressure.get();
+	}
+
+	public long sampleAgeMs() {
+		long sampled = lastSuccessfulSampleNanos;
+		return sampled > 0L ? Math.max(0L, (System.nanoTime() - sampled) / 1_000_000L) : -1L;
+	}
+
+	public String physicalPressureState() {
+		long free = freePhysicalMb();
+		long age = sampleAgeMs();
+		if (free < 0L || age < 0L) return "UNAVAILABLE";
+		if (age > 2_000L) return "STALE";
+		if (physicalUnderPressure()) return "PRESSURE";
+		return pressureObserved ? "RECOVERED" : "NO_EVENT";
+	}
+
+	public long sampleTimestampNanos() { return lastPhysicalSampleNanos; }
+
+	public boolean isFresh() {
+		long sampled = lastPhysicalSampleNanos;
+		return sampled > 0L && System.nanoTime() - sampled <= 2_000_000_000L;
+	}
+
+	public long pressureAgeMs() {
+		long since = pressureSinceNanos;
+		return since > 0L ? Math.max(0L, (System.nanoTime() - since) / 1_000_000L) : -1L;
+	}
+
+	public long pressureThresholdMb() {
+		return Math.max(0L, Math.round(M3FrametimeMod.config().memoryPressureFreeMbThreshold));
 	}
 
 	public long freePhysicalMb() {

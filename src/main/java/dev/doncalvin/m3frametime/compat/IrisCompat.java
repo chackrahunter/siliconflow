@@ -12,9 +12,7 @@ import java.lang.reflect.Method;
  * Uses MethodHandles for near-native invocation speed without reflection overhead in render hot paths.
  */
 public final class IrisCompat {
-	private static final boolean IRIS_LOADED =
-		FabricLoader.getInstance().isModLoaded("iris")
-		|| FabricLoader.getInstance().isModLoaded("oculus");
+	private static final boolean IRIS_LOADED = detectIris();
 
 	private static Object irisApiInstance;
 	private static MethodHandle isShaderPackInUseHandle;
@@ -26,6 +24,12 @@ public final class IrisCompat {
 	private static long lastShaderCheckNanos;
 
 	private IrisCompat() {}
+
+	private static boolean detectIris() {
+		if (FabricLoader.getInstance().isModLoaded("iris") || FabricLoader.getInstance().isModLoaded("oculus")) return true;
+		try { Class.forName("net.irisshaders.iris.api.v0.IrisApi", false, IrisCompat.class.getClassLoader()); return true; }
+		catch (Throwable ignored) { return false; }
+	}
 
 	private static synchronized void initReflection() {
 		if (initialized || !IRIS_LOADED) {
@@ -39,10 +43,10 @@ public final class IrisCompat {
 			irisApiInstance = getInstanceMethod.invoke(null);
 			if (irisApiInstance != null) {
 				MethodHandles.Lookup lookup = MethodHandles.publicLookup();
-				Method m1 = irisApiInstance.getClass().getMethod("isShaderPackInUse");
+				Method m1 = apiClass.getMethod("isShaderPackInUse");
 				isShaderPackInUseHandle = lookup.unreflect(m1);
 				try {
-					Method m2 = irisApiInstance.getClass().getMethod("isRenderingShadowPass");
+					Method m2 = apiClass.getMethod("isRenderingShadowPass");
 					isRenderingShadowPassHandle = lookup.unreflect(m2);
 				} catch (NoSuchMethodException ignored) {
 				}

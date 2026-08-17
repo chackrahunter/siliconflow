@@ -8,7 +8,10 @@ import net.fabricmc.loader.api.Version;
 import java.util.Optional;
 
 /**
- * Universal runtime Minecraft version detector and capability evaluator for SiliconFlow.
+ * Runtime metadata detector for the version-specific SiliconFlow artifact.
+ *
+ * <p>This detector is diagnostic and gates optional behavior only. It cannot make
+ * bytecode compiled against one Minecraft/Yarn version load on another version.</p>
  * Uses pure metadata-based version parsing without loading any Minecraft classes into the JVM,
  * ensuring zero MixinTargetAlreadyLoadedException issues during preLaunch.
  */
@@ -21,7 +24,8 @@ public final class VersionDetector {
 	private final String rawVersion;
 
 	private VersionDetector() {
-		String detectedVersion = "1.21.4"; // Default fallback
+		String detectedVersion = "unknown";
+		boolean detected = false;
 		int maj = 1;
 		int min = 21;
 		int pat = 4;
@@ -31,6 +35,7 @@ public final class VersionDetector {
 			if (mcMod.isPresent()) {
 				Version v = mcMod.get().getMetadata().getVersion();
 				detectedVersion = v.getFriendlyString();
+				detected = true;
 				String[] parts = detectedVersion.split("[.\\-+_]");
 				if (parts.length >= 1) {
 					maj = parsePart(parts[0], 1);
@@ -43,13 +48,17 @@ public final class VersionDetector {
 				}
 			}
 		} catch (Throwable t) {
-			M3FrametimeMod.LOGGER.warn("VersionDetector: Failed to query Minecraft version from FabricLoader, falling back to 1.21.4: {}", t.toString());
+			M3FrametimeMod.LOGGER.warn("VersionDetector: Failed to query Minecraft version from FabricLoader; compatibility is unknown: {}", t.toString());
 		}
 
 		this.major = maj;
 		this.minor = min;
 		this.patch = pat;
 		this.rawVersion = detectedVersion;
+
+		if (!detected) {
+			M3FrametimeMod.LOGGER.warn("SiliconFlow could not verify the Minecraft version; this artifact targets Minecraft 1.21.4.");
+		}
 
 		M3FrametimeMod.LOGGER.info(
 			"SiliconFlow Version Engine: Active Minecraft {} (Major={}, Minor={}, Patch={})",
@@ -88,29 +97,20 @@ public final class VersionDetector {
 		return rawVersion;
 	}
 
-	/** Returns true if the running Minecraft version is at least the specified major.minor.patch. */
-	public boolean isAtLeast(int targetMajor, int targetMinor, int targetPatch) {
-		if (this.major != targetMajor) {
-			return this.major > targetMajor;
-		}
-		if (this.minor != targetMinor) {
-			return this.minor > targetMinor;
-		}
-		return this.patch >= targetPatch;
+	/** Exact Minecraft version compiled and tested by this artifact. */
+	public boolean isSupportedArtifactVersion() {
+		return major == 1 && minor == 21 && patch == 4 && "1.21.4".equals(rawVersion);
 	}
 
-	/** Returns true if running on Minecraft 1.21.2+ with RenderState DTO architecture. */
-	public boolean isRenderStateEra() {
-		return isAtLeast(1, 21, 2);
+	/** Whether runtime metadata matches the artifact target exactly. */
+	public boolean isExactArtifactTarget() {
+		return isSupportedArtifactVersion();
 	}
 
-	/** Returns true if running on Minecraft 1.20+ with DrawContext GUI architecture. */
-	public boolean isDrawContextEra() {
-		return isAtLeast(1, 20, 0);
+	/** Exact target only; this artifact has no cross-release compatibility claim. */
+	public boolean isExactTargetOnly() {
+		return isExactArtifactTarget();
 	}
 
-	/** Returns true if running on Minecraft 1.17+ with modern OpenGL 3.2 core profile. */
-	public boolean isModernGl() {
-		return isAtLeast(1, 17, 0);
-	}
+
 }

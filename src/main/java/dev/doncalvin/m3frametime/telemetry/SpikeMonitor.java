@@ -119,13 +119,12 @@ public final class SpikeMonitor {
 			|| (emaNanos > 8_000_000L && deltaNanos > (long) (emaNanos * 2.2));
 
 		if (!isMicroStutter) {
+			PerformanceRecorder.get().recordFrame(deltaNanos, false, StutterErrorCode.OK_000);
 			return;
 		}
 
 		GcProbe gc = GcProbe.get();
 		MemoryPressureProbe mem = MemoryPressureProbe.get();
-		mem.sampleHeap();
-
 		StutterErrorCode code = StutterErrorCode.fromSpike(
 			deltaNanos,
 			gc,
@@ -143,6 +142,7 @@ public final class SpikeMonitor {
 		lastSpikeHeapUsedMb = mem.heapUsedMb();
 		lastSpikeHeapMaxMb = mem.heapMaxMb();
 		spikeCount++;
+		PerformanceRecorder.get().recordFrame(deltaNanos, true, code);
 
 		SpikeEvent slot = recent.forceClaimWriteSlot();
 		slot.set(deltaNanos, code, lastSpikeGcDeltaMs, lastSpikeFreePhysMb, now);
@@ -255,8 +255,6 @@ public final class SpikeMonitor {
 			out.add(sb.toString());
 		}
 		MemoryPressureProbe mem = MemoryPressureProbe.get();
-		mem.sampleHeap();
-
 		sb.setLength(0);
 		sb.append("[m3] now heap=").append(mem.heapUsedMb()).append("/").append(mem.heapMaxMb())
 			.append("MB freePhys=").append(mem.freePhysicalMb()).append("MB")

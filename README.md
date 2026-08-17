@@ -57,6 +57,10 @@ Minecraft Java on macOS uses an OpenGL path translated onto Metal. Apple Silicon
 
 SiliconFlow applies controls that are useful and supportable from the client. It does not pretend to measure GPU utilization, VRAM, or exact core placement when those values are outside its probes; macOS remains authoritative for scheduling and memory pressure.
 
+### Memory policy (mod-owned and reversible)
+
+The memory policy samples JVM heap occupancy and macOS-reported physical free memory asynchronously. It distinguishes heap pressure from shared physical-memory pressure; neither value is VRAM, and neither is an exact accounting of Sodium, Iris, OpenGL/Metal translation, or other native allocations. On three consecutive pressure samples it enters a hysteretic `MOD-OWNED TRIM` state, clears only SiliconFlow scratch state and reduces the mod-owned particle admission budget. It recovers only after twenty healthy samples and a higher free-memory margin, preventing rapid oscillation. It never calls `System.gc()`, changes `-Xmx`, render distance, simulation distance, shader quality, Sodium/Iris settings, or macOS settings. Disable with `memoryPolicyEnabled=false`; diagnostic recording remains separately opt-in.
+
 <p align="center">
   <img src="docs/assets/performance-model.svg" alt="Diagram showing Apple-Silicon optimization across shared memory, rendering, scheduling, and optional diagnostics" width="100%">
 </p>
@@ -196,7 +200,7 @@ For practical Apple-Silicon troubleshooting, see [`docs/max-fps-checklist.md`](d
 | Symptom | First checks |
 | --- | --- |
 | Overlay does not appear | Confirm the exact 1.21.4 artifact, launch once, press **F8**, then check the log for mixin or dependency errors. |
-| Frequent long freezes | Use native aarch64 Java, watch macOS Memory Pressure, reduce render distance, and avoid oversized heaps on 8 GB systems. |
+| Frequent long freezes | Use native aarch64 Java, watch macOS Memory Pressure, reduce render distance manually, and avoid oversized heaps on 8 GB systems. For the confirmed 8 GB M3 + Iris + 41-chunk near-heap failure, treat the heap ceiling as a user-controlled limit: prefer a native Java 21 runtime and a conservative Prism `-Xmx` (often around 2.5–3G depending on the rest of the modpack), then test; SiliconFlow does not force or rewrite JVM arguments. |
 | Chunk-loading hitching with Sodium | Test Sodium’s macOS **Chunk Memory Allocator = `SWAP`** and compare against a documented baseline. |
 | Shaders behave differently | Record the exact Iris version, shader pack, driver state, and settings; shader runs are separate and not guaranteed. |
 | An optional diagnostic says unavailable | This is expected for signals SiliconFlow does not instrument, including GPU utilization, VRAM, and exact core placement. |

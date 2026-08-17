@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.doncalvin.m3frametime.M3FrametimeMod;
 import dev.doncalvin.m3frametime.compat.StackCompat;
+import dev.doncalvin.m3frametime.engine.SiliconCpuTopology;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.Reader;
@@ -16,9 +17,9 @@ import java.nio.file.Path;
 /**
  * Soft-boosts Sodium chunk-builder thread count for Apple Silicon without starving the Render Thread.
  * <p>
- * On 8-core Apple Silicon M3 (4 P-Cores + 4 E-Cores), allocating 3 chunk builder threads
- * allows rapid terrain meshing while guaranteeing 1 P-Core is 100% dedicated to the Render Thread.
- * This permanently prevents macOS from demoting the Render Thread to slow E-Cores (SYS-001)
+ * Uses a bounded, explicit worker-count request only when the user enables it.
+ * Sodium and macOS retain ownership of scheduling and worker implementation.
+ * Core placement remains a macOS scheduler decision.
  * and prevents chunk queue saturation (CHK-001).
  */
 public final class SodiumSoftBooster {
@@ -28,25 +29,38 @@ public final class SodiumSoftBooster {
 	private static boolean applied;
 	private static int lastTarget = -1;
 	private static int lastConfigured = -1;
+	private static int lastPatchedTarget = -1;
+	private static final com.google.gson.Gson JSON = new com.google.gson.GsonBuilder().setPrettyPrinting().create();
 
 	private SodiumSoftBooster() {}
 
-	/** Sodium's published auto formula (for logs / docs). */
+	/**
+	 * Chip-adaptive auto-detection: delegates to topology when available,
+	 * otherwise falls back to Sodium's published formula.
+	 */
 	public static int sodiumAutoThreadCount(int cores) {
-		int max = Math.max(1, cores);
-		return Math.min(10, Math.max(1, Math.max(max / 3, max - 6)));
+		try {
+			return SiliconCpuTopology.get().getSodiumWorkerThreads();
+		} catch (Exception e) {
+			int max = Math.max(1, cores);
+			return Math.min(10, Math.max(1, Math.max(max / 3, max - 6)));
+		}
 	}
 
 	/**
-	 * Balanced M-chip worker count: Leaves at least one full P-Core exclusively for the Render Thread.
+	 * Chip-adaptive worker count from topology, with user-config override.
 	 */
 	public static int mChipTargetThreads(int cores) {
-		int c = Math.max(1, cores);
-		// On 8-core Apple Silicon (4P + 4E), 3 builder threads leaves 1 P-Core dedicated to Render Thread.
-		int target = Math.min(3, Math.max(2, c / 2));
+		int target;
+		try {
+			target = SiliconCpuTopology.get().getSodiumWorkerThreads();
+		} catch (Exception e) {
+			int c = Math.max(1, cores);
+			target = Math.min(3, Math.max(2, c / 2));
+		}
 		int configured = M3FrametimeMod.config().sodiumChunkBuilderThreads;
 		if (configured > 0) {
-			target = Math.min(c, configured);
+			target = Math.min(cores, configured);
 		}
 		return Math.max(1, target);
 	}
@@ -95,7 +109,7 @@ public final class SodiumSoftBooster {
 				diskOk
 			);
 			M3FrametimeMod.LOGGER.info(
-				"Apple Silicon optimization: 1 P-Core reserved exclusively for Render Thread, 3 threads for Sodium meshing"
+				"Sodium chunk-builder setting applied; OS core placement is not measurable or guaranteed"
 			);
 		} else if (diskOk) {
 			M3FrametimeMod.LOGGER.info(
@@ -145,6 +159,9 @@ public final class SodiumSoftBooster {
 	}
 
 	private static boolean patchOptionsJson(int target) {
+		if (lastPatchedTarget == target) {
+			return true;
+		}
 		Path path = FabricLoader.getInstance().getConfigDir().resolve("sodium-options.json");
 		try {
 			JsonObject root;
@@ -162,18 +179,20 @@ public final class SodiumSoftBooster {
 			root.add("performance", performance);
 
 			performance.addProperty("chunk_builder_threads", target);
-			// Apple Silicon TBDR GPU direct zero-copy upload
-			if (!performance.has("chunk_memory_allocator")) {
-				performance.addProperty("chunk_memory_allocator", "SWAP");
-			}
-			performance.addProperty("use_compact_vertex_format", true);
-			performance.addProperty("use_block_face_culling", true);
-
+			// Do not claim ownership of Sodium's allocator, vertex format, or culling.
+			// This opt-in bridge changes only the explicitly requested worker count.
 			Files.createDirectories(path.getParent());
-			try (Writer writer = Files.newBufferedWriter(path)) {
-				new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root, writer);
+			Path temporary = path.resolveSibling(path.getFileName() + ".tmp");
+			try (Writer writer = Files.newBufferedWriter(temporary)) {
+				JSON.toJson(root, writer);
+			}
+			try {
+				Files.move(temporary, path, java.nio.file.StandardCopyOption.ATOMIC_MOVE, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			} catch (java.nio.file.AtomicMoveNotSupportedException e) {
+				Files.move(temporary, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 			}
 			lastConfigured = target;
+			lastPatchedTarget = target;
 			return true;
 		} catch (Exception e) {
 			M3FrametimeMod.LOGGER.debug("sodium-options.json patch failed: {}", e.toString());

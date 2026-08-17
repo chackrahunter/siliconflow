@@ -1,7 +1,7 @@
 package dev.doncalvin.m3frametime.engine;
 
+import dev.doncalvin.m3frametime.M3FrametimeMod;
 import dev.doncalvin.m3frametime.math.FastMath;
-import dev.doncalvin.m3frametime.telemetry.DebugHud;
 
 /**
  * SiliconFlow In-Game Hardware & Performance Benchmark Engine.
@@ -11,12 +11,12 @@ import dev.doncalvin.m3frametime.telemetry.DebugHud;
 public final class SiliconBenchmark {
 	private static final SiliconBenchmark INSTANCE = new SiliconBenchmark();
 
-	private boolean running = false;
-	private double progress = 0.0;
-	private long fastMathOpsPerSec = 0;
-	private double memoryBandwidthGbSec = 0.0;
-	private double performanceIndex = 0.0;
-	private String resultRating = "Not Tested";
+	private volatile boolean running = false;
+	private volatile double progress = 0.0;
+	private volatile long fastMathOpsPerSec = 0;
+	private volatile double memoryBandwidthGbSec = 0.0;
+	private volatile double performanceIndex = 0.0;
+	private volatile String resultRating = "Not Tested";
 
 	private SiliconBenchmark() {}
 
@@ -48,6 +48,18 @@ public final class SiliconBenchmark {
 		return resultRating;
 	}
 
+	public String getRecommendedProfile() {
+		if (performanceIndex >= 95.0) {
+			return "PLAYABLE";
+		} else if (performanceIndex >= 80.0) {
+			return "BALANCED";
+		} else if (performanceIndex >= 60.0) {
+			return "MAX";
+		} else {
+			return "MAX";
+		}
+	}
+
 	public void runBenchmarkAsync() {
 		if (running) return;
 		running = true;
@@ -63,6 +75,9 @@ public final class SiliconBenchmark {
 				for (int i = 0; i < iterations; i++) {
 					float angle = i * 0.001f;
 					acc += FastMath.sin(angle) * FastMath.cos(angle);
+				}
+				if (acc == Float.MIN_VALUE) {
+					M3FrametimeMod.LOGGER.debug("SiliconBenchmark math accumulator reached sentinel");
 				}
 				long elapsedMathNanos = System.nanoTime() - t0;
 				double mathSec = Math.max(0.001, elapsedMathNanos / 1_000_000_000.0);
@@ -82,6 +97,9 @@ public final class SiliconBenchmark {
 				for (int i = 0; i < copies; i++) {
 					System.arraycopy(src, 0, dst, 0, bufferSize);
 				}
+				if (dst[bufferSize - 64] == 127) {
+					M3FrametimeMod.LOGGER.debug("SiliconBenchmark copy checksum reached sentinel");
+				}
 				long elapsedMemNanos = System.nanoTime() - t1;
 				double memSec = Math.max(0.001, elapsedMemNanos / 1_000_000_000.0);
 				double totalBytesMoved = (double) bufferSize * copies;
@@ -89,12 +107,9 @@ public final class SiliconBenchmark {
 
 				// Phase 3: Compute SiliconFlow Performance Index (SPI)
 				progress = 1.0;
-				int currentFps = DebugHud.get().getLiveFps();
 				double mathScore = Math.min(100.0, (fastMathOpsPerSec / 500_000_000.0) * 40.0);
 				double memScore = Math.min(100.0, (memoryBandwidthGbSec / 40.0) * 30.0);
-				double fpsScore = Math.min(100.0, (currentFps / 500.0) * 30.0);
-
-				this.performanceIndex = Math.min(100.0, Math.max(50.0, mathScore + memScore + fpsScore));
+				this.performanceIndex = Math.min(100.0, Math.max(0.0, (mathScore + memScore) / 70.0 * 100.0));
 
 				if (performanceIndex >= 95.0) {
 					this.resultRating = "🍎 S+ Tier: Apple Silicon Ultra / Max (Legendary)";
@@ -105,13 +120,17 @@ public final class SiliconBenchmark {
 				} else {
 					this.resultRating = "🔋 B Tier: Standard Power (Balanced)";
 				}
-			} catch (Throwable ignored) {
+
+			} catch (Throwable t) {
+				M3FrametimeMod.LOGGER.warn("SiliconBenchmark failed: {}", t.toString());
+				resultRating = "Benchmark failed";
 			} finally {
 				running = false;
 			}
 		}, "SiliconFlow-Benchmark");
 
-		benchThread.setPriority(Thread.MAX_PRIORITY);
+		benchThread.setPriority(Thread.NORM_PRIORITY);
+		benchThread.setDaemon(true);
 		benchThread.start();
 	}
 }

@@ -2,6 +2,7 @@ package dev.doncalvin.m3frametime.mixin.client;
 
 import dev.doncalvin.m3frametime.M3FrametimeMod;
 import dev.doncalvin.m3frametime.compat.StackCompat;
+import dev.doncalvin.m3frametime.compat.IrisCompat;
 import dev.doncalvin.m3frametime.config.M3Config;
 import dev.doncalvin.m3frametime.telemetry.RamDiscipline;
 import net.minecraft.block.entity.BannerBlockEntity;
@@ -26,14 +27,14 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * High-performance block entity cull: distance gating + sign/banner detail throttling + Iris shadow pass culling.
+ * High-performance block entity cull: distance gating + sign/banner detail throttling.
  */
 @Mixin(BlockEntityRenderDispatcher.class)
 public abstract class BlockEntityRenderDispatcherMixin {
 	@Shadow
 	public net.minecraft.client.render.Camera camera;
 
-	@Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "render", at = @At("HEAD"), cancellable = true)
 	private <E extends BlockEntity> void m3frametime$cullBe(
 		E blockEntity,
 		float tickDelta,
@@ -52,26 +53,6 @@ public abstract class BlockEntityRenderDispatcherMixin {
 		double dz = pos.getZ() + 0.5 - cam.z;
 		double distSq = dx * dx + dy * dy + dz * dz;
 
-		// Iris & Shader shadow map pass: skip non-shadow details completely
-		if (cfg.optimizeShadowPass && StackCompat.isShadowPass()) {
-			if (blockEntity instanceof SignBlockEntity
-				|| blockEntity instanceof BannerBlockEntity
-				|| blockEntity instanceof EndPortalBlockEntity
-				|| blockEntity instanceof EndGatewayBlockEntity
-				|| blockEntity instanceof EnchantingTableBlockEntity
-				|| blockEntity instanceof BellBlockEntity
-				|| blockEntity instanceof CampfireBlockEntity
-				|| blockEntity instanceof DecoratedPotBlockEntity
-				|| blockEntity instanceof ConduitBlockEntity) {
-				ci.cancel();
-				return;
-			}
-			double shadowDist = cfg.shadowEntityDistance;
-			if (distSq > shadowDist * shadowDist) {
-				ci.cancel();
-				return;
-			}
-		}
 
 		// Specialized sign / banner distance culling (chests / spawners stay up to blockEntityCullDistance)
 		if (cfg.skipFarSignText && blockEntity instanceof SignBlockEntity) {

@@ -116,6 +116,11 @@ public final class FastMath {
 		return atan;
 	}
 
+	/** Double-precision atan2 (delegates to JDK for full precision). */
+	public static double atan2(double y, double x) {
+		return Math.atan2(y, x);
+	}
+
 	/** Fast 2D Euclidean hypotenuse approximation without overflow. */
 	public static double fastHypot(double x, double z) {
 		double ax = Math.abs(x);

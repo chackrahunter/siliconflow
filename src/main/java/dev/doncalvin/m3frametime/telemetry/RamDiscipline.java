@@ -17,6 +17,10 @@ public final class RamDiscipline {
 
 	private final AtomicBoolean trimParticles = new AtomicBoolean(false);
 	private final AtomicInteger tickCounter = new AtomicInteger();
+	private final AtomicInteger enterSamples = new AtomicInteger();
+	private final AtomicInteger recoverSamples = new AtomicInteger();
+	private final AtomicBoolean pressureMode = new AtomicBoolean(false);
+	private long lastPolicySampleNanos;
 
 	private RamDiscipline() {}
 
@@ -30,25 +34,36 @@ public final class RamDiscipline {
 	public void onClientTick() {
 		M3Config cfg = M3FrametimeMod.config();
 		MemoryPressureProbe probe = MemoryPressureProbe.get();
-		probe.sampleHeap();
-		probe.requestSample();
+		if (cfg.memoryPolicyEnabled && (tickCounter.get() & 7) == 0) {
+			probe.sampleHeap();
+			probe.requestSample();
+		}
 
 		long heapUsed = probe.heapUsedMb();
 		int tick = tickCounter.incrementAndGet();
 
-		// Proactive damping: if heap usage approaches 1400MB, soft-trim ephemeral pools
-		boolean highHeap = heapUsed > 1400L;
+		// Use the actual heap ceiling instead of a fixed 1400 MB cutoff. This only
+		// releases ephemeral caches and never changes user video/shader settings.
+		long heapMax = probe.heapMaxMb();
+		boolean highHeap = heapMax > 0L && heapUsed >= Math.round(heapMax * 0.90);
+		boolean physicalPressure = probe.physicalUnderPressure();
+		boolean heapPressure = probe.heapUnderPressure();
+		long policySample = probe.sampleTimestampNanos();
+		if (policySample != lastPolicySampleNanos && policySample > 0L) {
+			lastPolicySampleNanos = policySample;
+			updatePressureMode(cfg, probe, physicalPressure, heapPressure);
+		}
 		boolean hintNow = (cfg.softCacheHints && cfg.softCacheHintIntervalTicks > 0 && (tick % cfg.softCacheHintIntervalTicks) == 0)
-			|| highHeap;
+			|| pressureMode.get();
 
 		if (hintNow) {
-			softCacheHint(highHeap);
+			softCacheHint(pressureMode.get());
 		}
 	}
 
 	/**
 	 * Clear thread-local scratch pools and request particle queue trim.
-	 * Explicitly avoids calling blocking System.gc().
+	 * Explicitly avoids calling blocking the JVM collector.
 	 */
 	public void softCacheHint(boolean aggressive) {
 		ScratchPool.releaseAllEphemeral();
@@ -62,7 +77,36 @@ public final class RamDiscipline {
 	}
 
 	public int effectiveMaxParticles() {
-		return M3FrametimeMod.config().maxParticles;
+		int configured = M3FrametimeMod.config().maxParticles;
+		if (!pressureMode.get() || configured <= 0) return configured;
+		return Math.max(16, configured / (MemoryPressureProbe.get().heapUnderPressure() ? 2 : 1));
+	}
+
+	public boolean pressureMode() { return pressureMode.get(); }
+
+	private void updatePressureMode(M3Config cfg, MemoryPressureProbe probe, boolean physical, boolean heap) {
+		if (!cfg.memoryPolicyEnabled) {
+			pressureMode.set(false);
+			enterSamples.set(0);
+			recoverSamples.set(0);
+			return;
+		}
+		boolean candidate = heap || (probe.isFresh() && physical);
+		if (!pressureMode.get()) {
+			recoverSamples.set(0);
+			if (candidate && enterSamples.incrementAndGet() >= cfg.memoryPressureEnterSamples) {
+				pressureMode.set(true);
+				enterSamples.set(0);
+			}
+		} else {
+			boolean recovered = !heap && (!probe.isFresh() || probe.freePhysicalMb() >= Math.round(cfg.memoryPressureRecoverMbThreshold));
+			if (recovered && recoverSamples.incrementAndGet() >= cfg.memoryPressureRecoverSamples) {
+				pressureMode.set(false);
+				recoverSamples.set(0);
+			} else if (!recovered) {
+				recoverSamples.set(0);
+			}
+		}
 	}
 
 	public double effectiveParticleCullDistance() {

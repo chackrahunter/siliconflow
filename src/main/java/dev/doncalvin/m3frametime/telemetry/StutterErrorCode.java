@@ -9,7 +9,9 @@ import java.util.Map;
  */
 public enum StutterErrorCode {
 	// 0. SYSTEM STATUS OK
-	OK_000("OK-000", "Optimal Performance", "Engine running smooth on P-Cores at peak boost", 0x3FB950),
+	OK_000("OK-000", "Measured Stable", "No recent frame-time spike or quality threshold breach", 0x3FB950),
+
+	FRAME_001("FRAME-001", "Frame-Time Spike", "Measured frame exceeded the configured spike threshold; cause is not instrumented", 0xF85149),
 
 	// 1. JAVA GARBAGE COLLECTION & JVM HEAP (GC-001 .. GC-030)
 	GC_001("GC-001", "ZGC Major Pause", "ZGC collection pause duration exceeded 10ms", 0xF85149),
@@ -320,58 +322,28 @@ public enum StutterErrorCode {
 
 		// 1. Check GC pauses
 		if (gc != null && gc.frameGcDeltaMs() >= 10) {
-			return GC_001; // ZGC Major Pause
+			return GC_001; // observed collector pause
 		}
 		if (gc != null && gc.frameGcCountDelta() > 0 && deltaMs > 15) {
-			return GC_002; // GC Allocation Spike
+			return GC_002; // observed collection during spike
 		}
 
 		// 2. Check Unified RAM & Heap pressure
 		if (mem != null) {
-			if (mem.freePhysicalMb() < 64) {
+			long freePhysicalMb = mem.freePhysicalMb();
+			if (freePhysicalMb >= 0L && freePhysicalMb < 64) {
 				return MEM_001; // Critical Low RAM
 			}
-			if (mem.freePhysicalMb() < 128) {
+			if (freePhysicalMb >= 0L && freePhysicalMb < 128) {
 				return MEM_002; // Warning Low RAM
 			}
 			if (mem.heapMaxMb() > 0 && (mem.heapUsedMb() * 100 / mem.heapMaxMb()) > 92) {
-				return GC_018; // Heap Saturation
+				return GC_030; // observed heap expansion pressure
 			}
 		}
 
-		// 3. Check Shaders & Shadow Pass Overdraw
-		if (isShadowPass) {
-			return GPU_001; // Shadow Cascade Overdraw
-		}
-		if (isShaderActive && deltaMs > 20) {
-			return GPU_016; // TBDR Tile Buffer Spill
-		}
+		// No concrete subsystem cause was measured. Never report a spike as OK-000.
+		return FRAME_001;
 
-		// 4. Check Phase attribution
-		if (phase != null) {
-			switch (phase) {
-				case CHUNK_UPLOAD -> {
-					return CHK_007; // VBO Staging Upload Stall
-				}
-				case RENDER_WAIT -> {
-					return SYS_005; // WindowServer VSync Slip
-				}
-				case ENTITY_TICK -> {
-					return ENT_001; // Entity Count Surge
-				}
-				case PARTICLE -> {
-					return PRT_001; // Particle Storm
-				}
-				case SOUND -> {
-					return SND_001; // OpenAL Channel Exhaust
-				}
-				case WORLD_RENDER -> {
-					return GPU_018; // Alpha Discard Stall
-				}
-				default -> {}
-			}
-		}
-
-		return OK_000;
 	}
 }

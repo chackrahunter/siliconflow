@@ -13,11 +13,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Skip potion swirl particle updates for far living entities (client-only).
  * Lithium optimizes effect ticking logic; this is leftover visual particle cost.
- * Soft require=0.
+ * Exact-target injection.
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityPotionSwirlMixin {
-	@Inject(method = "updatePotionSwirls", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "updatePotionSwirls", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipFarPotionSwirls(CallbackInfo ci) {
 		LivingEntity self = (LivingEntity) (Object) this;
 		if (!self.getWorld().isClient || self instanceof PlayerEntity) {

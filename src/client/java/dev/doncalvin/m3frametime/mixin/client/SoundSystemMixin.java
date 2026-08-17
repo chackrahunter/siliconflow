@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(SoundSystem.class)
 public abstract class SoundSystemMixin {
-	@Inject(method = "play(Lnet/minecraft/client/sound/SoundInstance;)V", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "play(Lnet/minecraft/client/sound/SoundInstance;)V", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipFarPlay(SoundInstance sound, CallbackInfo ci) {
 		M3Config cfg = M3FrametimeMod.config();
 		if (!cfg.farSoundSkip || sound == null) {

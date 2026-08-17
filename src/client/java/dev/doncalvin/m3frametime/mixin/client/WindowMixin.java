@@ -21,7 +21,7 @@ public abstract class WindowMixin {
 	@Unique
 	private boolean m3frametime$glfwReady;
 
-	@Inject(method = "<init>", at = @At("RETURN"), require = 0)
+	@Inject(method = "<init>", at = @At("RETURN"))
 	private void m3frametime$onWindowCreated(CallbackInfo ci) {
 		if (!m3frametime$glfwReady && this.handle != 0L) {
 			GlfwSync.applyIfConfigured(this.handle);
@@ -30,7 +30,7 @@ public abstract class WindowMixin {
 	}
 
 	/** Integer scale only when retinaGuard opted in — off by default (MAX). */
-	@Inject(method = "getScaleFactor", at = @At("RETURN"), cancellable = true, require = 0)
+	@Inject(method = "getScaleFactor", at = @At("RETURN"), cancellable = true)
 	private void m3frametime$integerScale(CallbackInfoReturnable<Double> cir) {
 		if (!RetinaGuard.enabled() || !RetinaGuard.isMacOs()) {
 			return;

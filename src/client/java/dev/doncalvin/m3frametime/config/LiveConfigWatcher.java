@@ -1,8 +1,8 @@
 package dev.doncalvin.m3frametime.config;
 
 import dev.doncalvin.m3frametime.M3FrametimeMod;
-import dev.doncalvin.m3frametime.client.DarwinQos;
 import dev.doncalvin.m3frametime.threading.AdaptiveWorkerPool;
+import net.minecraft.client.MinecraftClient;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,18 +42,27 @@ public final class LiveConfigWatcher {
 			}
 			if (!modified.equals(lastModified)) {
 				lastModified = modified;
-				AdaptiveWorkerPool.get().execute(() -> {
-					try {
-						M3FrametimeMod.reloadConfig();
-						M3FrametimeMod.LOGGER.info("LiveConfigWatcher: Hot-reloaded m3-frametime.json in real time!");
-						if (M3FrametimeMod.config().boostDarwinQos) {
-							DarwinQos.boostRenderThread();
+				try {
+					AdaptiveWorkerPool.get().execute(() -> {
+						try {
+							M3Config loaded = M3Config.load();
+							MinecraftClient client = MinecraftClient.getInstance();
+							if (client != null) {
+								client.execute(() -> {
+									M3FrametimeMod.publishConfig(loaded);
+									M3FrametimeMod.LOGGER.info("LiveConfigWatcher: applied config on the client thread");
+								});
+							}
+						} catch (Throwable t) {
+							M3FrametimeMod.LOGGER.warn("LiveConfigWatcher: config reload failed: {}", t.toString());
 						}
-					} catch (Throwable ignored) {
-					}
-				});
+					});
+				} catch (RuntimeException e) {
+					M3FrametimeMod.LOGGER.warn("LiveConfigWatcher: reload task rejected: {}", e.toString());
+				}
 			}
-		} catch (Throwable ignored) {
+		} catch (Exception e) {
+			M3FrametimeMod.LOGGER.debug("LiveConfigWatcher: file check failed: {}", e.toString());
 		}
 	}
 }

@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Soft-skip world-border wall quads (rare but fill-rate heavy when near). */
 @Mixin(WorldBorderRendering.class)
 public abstract class WorldBorderRenderingMixin {
-	@Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "render", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipBorder(WorldBorder border, Vec3d cameraPos, double viewDistance, double farPlane, CallbackInfo ci) {
 		if (RamDiscipline.get().skipWorldBorder()) {
 			ci.cancel();

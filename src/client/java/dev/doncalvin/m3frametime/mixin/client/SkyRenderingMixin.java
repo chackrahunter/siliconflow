@@ -13,14 +13,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Soft-skip starfield / celestial body draws (sky dome stays). */
 @Mixin(SkyRendering.class)
 public abstract class SkyRenderingMixin {
-	@Inject(method = "renderStars", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderStars", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipStars(Fog fog, float starBrightness, MatrixStack matrices, CallbackInfo ci) {
 		if (RamDiscipline.get().skipStars()) {
 			ci.cancel();
 		}
 	}
 
-	@Inject(method = "renderCelestialBodies", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderCelestialBodies", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipCelestial(
 		MatrixStack matrices,
 		VertexConsumerProvider.Immediate vertexConsumers,

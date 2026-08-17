@@ -8,8 +8,6 @@ import org.joml.Vector4f;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Thread-local scratch for hot paths owned by this mod. Avoids ephemeral JOML/BlockPos/String churn.
@@ -17,10 +15,6 @@ import java.util.List;
  */
 public final class ScratchPool {
 	private static final ThreadLocal<ScratchPool> TL = ThreadLocal.withInitial(ScratchPool::new);
-	/** Soft registry so RamDiscipline can trim without touching every ThreadLocal blindly. */
-	private static final List<ScratchPool> LIVE = new ArrayList<>(4);
-	private static final Object LIVE_LOCK = new Object();
-
 	private static final int SB_INITIAL = 160;
 	private static final int SB_SOFT_CAP = 256;
 	private static final int SOUND_BYTES = 4096;
@@ -43,17 +37,13 @@ public final class ScratchPool {
 	public final byte[] soundScratch = new byte[SOUND_BYTES];
 	public final ByteBuffer soundDirect = ByteBuffer.allocateDirect(SOUND_BYTES).order(ByteOrder.nativeOrder());
 
-	private ScratchPool() {
-		synchronized (LIVE_LOCK) {
-			LIVE.add(this);
-		}
-	}
+	private ScratchPool() {}
 
 	public static ScratchPool get() {
 		return TL.get();
 	}
 
-	/** Clear length + shrink StringBuilders that grew past soft cap. No System.gc(). */
+	/** Clear length + shrink StringBuilders that grew past soft cap. No the JVM collector. */
 	public void releaseEphemeral() {
 		shrinkBuilder(stringBuilder);
 		shrinkBuilder(logBuilder);
@@ -66,8 +56,9 @@ public final class ScratchPool {
 		vec4f.zero();
 	}
 
+	/** Releases only the caller's pool; never mutates another thread's scratch state. */
 	public static void releaseAllEphemeral() {
-		TL.get().releaseEphemeral();
+		get().releaseEphemeral();
 	}
 
 	private static void shrinkBuilder(StringBuilder sb) {

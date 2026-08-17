@@ -11,14 +11,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ToastManager.class)
 public abstract class ToastManagerMixin {
-	@Inject(method = "add", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "add", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipAdd(Toast toast, CallbackInfo ci) {
 		if (M3FrametimeMod.config().skipToasts) {
 			ci.cancel();
 		}
 	}
 
-	@Inject(method = "draw", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "draw", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipDraw(DrawContext context, CallbackInfo ci) {
 		if (M3FrametimeMod.config().skipToasts) {
 			ci.cancel();

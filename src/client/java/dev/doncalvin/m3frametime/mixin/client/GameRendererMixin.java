@@ -12,21 +12,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Soft-skip view bobbing / hurt tilt / floating-item pop (every-frame or burst cost). */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
-	@Inject(method = "bobView", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "bobView", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipBob(MatrixStack matrices, float tickDelta, CallbackInfo ci) {
 		if (RamDiscipline.get().skipBobView()) {
 			ci.cancel();
 		}
 	}
 
-	@Inject(method = "tiltViewWhenHurt", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "tiltViewWhenHurt", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipHurtTilt(MatrixStack matrices, float tickDelta, CallbackInfo ci) {
 		if (RamDiscipline.get().skipHurtTilt()) {
 			ci.cancel();
 		}
 	}
 
-	@Inject(method = "renderFloatingItem", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "renderFloatingItem", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipFloatingItem(DrawContext context, float tickDelta, CallbackInfo ci) {
 		if (RamDiscipline.get().skipFloatingItem()) {
 			ci.cancel();

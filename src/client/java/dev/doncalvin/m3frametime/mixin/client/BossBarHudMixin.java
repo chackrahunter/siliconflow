@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Optional soft-skip for boss-bar HUD. */
 @Mixin(BossBarHud.class)
 public abstract class BossBarHudMixin {
-	@Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 0)
+	@Inject(method = "render", at = @At("HEAD"), cancellable = true)
 	private void m3frametime$skipBossBar(DrawContext context, CallbackInfo ci) {
 		if (RamDiscipline.get().skipBossBar()) {
 			ci.cancel();

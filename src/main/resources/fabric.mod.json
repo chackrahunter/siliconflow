@@ -3,7 +3,7 @@
 	"id": "m3-frametime",
 	"version": "${version}",
 	"name": "SiliconFlow",
-	"description": "SiliconFlow: Universal Native Mach-Kernel & Metal TBDR Low-Level Optimization Engine for Apple Silicon (M1/M2/M3/M4) across all Minecraft versions (1.0 to 26.x+).",
+	"description": "SiliconFlow: Apple Silicon frame-time and render optimizations for the exact Minecraft version named by this artifact.",
 	"authors": ["Don-Calvin"],
 	"contact": {
 		"homepage": "https://github.com/chackrahunter/siliconflow",
@@ -17,7 +17,6 @@
 		"client": ["dev.doncalvin.m3frametime.M3FrametimeClient"]
 	},
 	"mixins": [
-		"m3frametime.mixins.json",
 		{
 			"config": "m3frametime.client.mixins.json",
 			"environment": "client"
@@ -25,8 +24,8 @@
 	],
 	"depends": {
 		"fabricloader": "*",
-		"minecraft": "*",
-		"java": ">=8"
+		"minecraft": "1.21.4",
+		"java": ">=21"
 	},
 	"suggests": {
 		"sodium": "*",

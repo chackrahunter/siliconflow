@@ -45,18 +45,15 @@ public final class StackCompat {
 
 	/**
 	 * Cheap AABB frustum early-out in EntityRenderDispatcher.shouldRender.
-	 * Without Sodium: always on. With Sodium: when config.overrideSodiumEntityCull
-	 * is enabled for stricter early-out on Apple Silicon M3.
+	 * Disabled by default with Sodium because renderer ownership and shader compatibility
+	 * remain with Sodium/Iris. Users may opt in explicitly.
 	 */
 	public static boolean useAggressiveEntityFrustum() {
-		if (!SODIUM) {
-			return true;
-		}
 		return M3FrametimeMod.config().overrideSodiumEntityCull;
 	}
 
 	/**
-	 * Leftover worker pool stays small so Sodium/Iris keeps P-cores for meshing.
+	 * Leftover worker pool stays small to avoid competing with renderer-owned work.
 	 */
 	public static int preferredWorkerThreads() {
 		return SODIUM ? 1 : Math.max(1, Math.min(2, Runtime.getRuntime().availableProcessors() / 4));

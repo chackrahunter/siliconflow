@@ -1,6 +1,9 @@
 package dev.doncalvin.m3frametime.telemetry;
 
+import dev.doncalvin.m3frametime.M3FrametimeMod;
 import dev.doncalvin.m3frametime.compat.StackCompat;
+import dev.doncalvin.m3frametime.math.FastMath;
+import dev.doncalvin.m3frametime.pacing.FramePacer;
 import dev.doncalvin.m3frametime.pool.ScratchPool;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -13,33 +16,41 @@ import java.time.format.DateTimeFormatter;
 /**
  * 1:1 Pixel-Perfect Glassmorphic Futuristic F8 Debug & Diagnostic HUD.
  * Renders glowing telemetry pills, live animated wave curves, real-time FPS/frametimes,
- * live CPU/GPU load meters, and the LED Dot-Matrix Status Badge.
+ * measured memory/network diagnostics, and the LED Dot-Matrix Status Badge.
  * 100% non-blocking, zero-lag, real-time responsive.
  */
 public final class DebugHud {
 	private static final DebugHud INSTANCE = new DebugHud();
 	private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+	private static final long FPS_WINDOW_NANOS = 250_000_000L;
+	private static final float TWO_PI = 6.2831855f;
+	private static final int[] LED_PATTERN = {4, 6, 7, 31, 28, 12, 4};
 
 	private boolean visible = false;
+	private boolean enabled = true;
 	private float wavePhase = 0.0f;
+	private long lastRenderNanos;
+	private long cachedClockSecond = Long.MIN_VALUE;
+	private String cachedTime = "--:--:--";
 
 	// Frame timing and live FPS measurement
 	private long lastFrameNanos = 0;
 	private long fpsWindowStartNanos = 0;
 	private int frameCountInWindow = 0;
+	private long frameNanosInWindow;
 
 	// Live smooth display metrics
-	private int liveFps = 600;
-	private double liveFtMs = 1.6;
-	private double minFtMs = 1.2;
-	private double maxFtMs = 3.5;
-	private int cpuPercent = 32;
-	private int gpuPercent = 45;
+	private volatile int liveFps = 60;
+	private volatile double liveFtMs = 16.6;
+	private volatile double minFtMs = 16.6;
+	private volatile double maxFtMs = 16.6;
+	private volatile boolean shaderActive;
 
 	// Ring buffer for min/max calculation (32 samples)
 	private static final int RING_SIZE = 32;
 	private final double[] ftHistory = new double[RING_SIZE];
 	private int historyIdx = 0;
+	private int historyCount = 0;
 
 	private DebugHud() {}
 
@@ -48,7 +59,9 @@ public final class DebugHud {
 	}
 
 	public void toggle() {
-		visible = !visible;
+		if (enabled) {
+			visible = !visible;
+		}
 	}
 
 	public boolean isVisible() {
@@ -56,7 +69,14 @@ public final class DebugHud {
 	}
 
 	public void setVisible(boolean v) {
-		this.visible = v;
+		this.visible = enabled && v;
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+		if (!enabled) {
+			this.visible = false;
+		}
 	}
 
 	public int getLiveFps() {
@@ -67,19 +87,14 @@ public final class DebugHud {
 		return liveFtMs > 0.0 ? liveFtMs : 16.6;
 	}
 
-	/** Optional hook from client mixin. */
-	public void onFrameTick() {}
-
-	public void render(DrawContext context, RenderTickCounter tickCounter) {
-		if (!visible) {
-			return;
-		}
-		MinecraftClient client = MinecraftClient.getInstance();
-		if (client == null || client.textRenderer == null) {
-			return;
-		}
-
+	/** Called every frame from MinecraftClientMixin — must run unconditionally. */
+	public void onFrameTick() {
 		long now = System.nanoTime();
+		if (fpsWindowStartNanos == 0L) {
+			fpsWindowStartNanos = now;
+			lastFrameNanos = now;
+			return;
+		}
 
 		// Measure real frame-to-frame delta in milliseconds
 		if (lastFrameNanos > 0) {
@@ -88,32 +103,29 @@ public final class DebugHud {
 			if (deltaMs > 0.05 && deltaMs < 250.0) {
 				ftHistory[historyIdx & (RING_SIZE - 1)] = deltaMs;
 				historyIdx++;
+				historyCount = Math.min(RING_SIZE, historyCount + 1);
+				frameCountInWindow++;
+				frameNanosInWindow += deltaNanos;
 			}
 		}
 		lastFrameNanos = now;
 
 		// Calculate live rolling FPS over 250ms windows for crisp real-time reactivity
-		frameCountInWindow++;
-		if (now - fpsWindowStartNanos >= 250_000_000L) {
+		if (now - fpsWindowStartNanos >= FPS_WINDOW_NANOS && frameCountInWindow > 0) {
 			double elapsedSec = (now - fpsWindowStartNanos) / 1_000_000_000.0;
 			int calculatedFps = (int) Math.round(frameCountInWindow / Math.max(0.001, elapsedSec));
-			
-			// If client has an internal FPS counter, blend them
-			int mcFps = client.getCurrentFps();
-			if (mcFps > 0) {
-				liveFps = mcFps;
-			} else {
-				liveFps = Math.max(1, calculatedFps);
-			}
+			liveFps = Math.max(1, calculatedFps);
 
-			liveFtMs = 1000.0 / Math.max(1, liveFps);
+			liveFtMs = frameNanosInWindow > 0L
+				? frameNanosInWindow / (frameCountInWindow * 1_000_000.0)
+				: 1000.0 / Math.max(1, liveFps);
 
 			// Calculate rolling min/max
 			double min = 999.0;
 			double max = 0.0;
-			int count = Math.min(historyIdx, RING_SIZE);
-			for (int i = 0; i < count; i++) {
-				double d = ftHistory[i];
+			for (int i = 0; i < historyCount; i++) {
+				int index = (historyIdx - historyCount + i) & (RING_SIZE - 1);
+				double d = ftHistory[index];
 				if (d > 0.05) {
 					if (d < min) min = d;
 					if (d > max) max = d;
@@ -122,21 +134,58 @@ public final class DebugHud {
 			minFtMs = min < 900.0 ? min : liveFtMs * 0.85;
 			maxFtMs = max > 0.0 ? max : liveFtMs * 1.45;
 
-			// Dynamic CPU and GPU load simulation from frame load without blocking JMX
-			boolean shaders = StackCompat.isShaderActive();
-			int targetGpu = shaders ? Math.min(95, 45 + (liveFps / 15)) : Math.min(75, 20 + (liveFps / 30));
-			gpuPercent = (gpuPercent * 3 + targetGpu) / 4;
-			int targetCpu = Math.min(85, 25 + (liveFps / 35));
-			cpuPercent = (cpuPercent * 3 + targetCpu) / 4;
+			shaderActive = StackCompat.isShaderActive();
+			boolean shadowPass = StackCompat.isShadowPass();
+			MemoryPressureProbe memory = MemoryPressureProbe.get();
+			SpikeMonitor spikes = SpikeMonitor.get();
+			long spikeAge = spikes.lastSpikeAgeMs();
+			TelemetrySnapshot.publish(new TelemetrySnapshot(
+				now,
+				liveFps,
+				liveFtMs,
+				FramePacer.get().emaDeltaMs(),
+				minFtMs,
+				maxFtMs,
+				memory.heapUsedMb(),
+				memory.heapMaxMb(),
+				memory.freePhysicalMb(),
+				shaderActive,
+				shadowPass,
+				memory.underPressure(),
+				memory.pressureAgeMs(),
+				memory.pressureThresholdMb(),
+				M3FrametimeMod.config().boostDarwinQos,
+				spikeAge >= 0L && spikeAge < 5000L,
+				spikes.spikeCount(),
+				spikeAge,
+				spikes.lastErrorCode()
+			));
 
 			frameCountInWindow = 0;
+			frameNanosInWindow = 0L;
 			fpsWindowStartNanos = now;
 		}
+	}
 
-		// Continuous wave phase animation
-		wavePhase += 0.18f;
-		if (wavePhase > 1000.0f) {
-			wavePhase = 0.0f;
+	public void render(DrawContext context, RenderTickCounter tickCounter) {
+		if (!enabled || !visible) {
+			return;
+		}
+		MinecraftClient client = MinecraftClient.getInstance();
+		if (client == null || client.textRenderer == null) {
+			return;
+		}
+
+		// Time-based animation keeps the HUD stable across different frame rates.
+		long nowNanos = System.nanoTime();
+		if (lastRenderNanos == 0L) {
+			lastRenderNanos = nowNanos;
+		}
+		float deltaSeconds = Math.min(0.1f, Math.max(0.0f, (nowNanos - lastRenderNanos) / 1_000_000_000.0f));
+		lastRenderNanos = nowNanos;
+		wavePhase += deltaSeconds * 2.2f;
+		if (wavePhase > TWO_PI) {
+			wavePhase -= TWO_PI;
 		}
 
 		var tr = client.textRenderer;
@@ -145,11 +194,15 @@ public final class DebugHud {
 
 		// ==========================================
 		// 1. TOP HEADER PILL
-		// [SILICONFLOW: P-CORE] | [v1.0.35 · MC ...] | [HH:MM:SS]
+		// [SILICONFLOW] | [MC ...] | [HH:MM:SS]
 		// ==========================================
 		String mcVer = dev.doncalvin.m3frametime.version.VersionDetector.get().getRawVersion();
-		String timeStr = LocalTime.now().format(TIME_FMT);
-		String headerText = "[SILICONFLOW: P-CORE] | [v1.0.35 · MC " + mcVer + "] | [" + timeStr + "]";
+		long clockSecond = System.currentTimeMillis() / 1000L;
+		if (clockSecond != cachedClockSecond) {
+			cachedClockSecond = clockSecond;
+			cachedTime = LocalTime.now().format(TIME_FMT);
+		}
+		String headerText = "[SILICONFLOW] | [MC " + mcVer + "] | [" + cachedTime + "]";
 		int headerW = tr.getWidth(headerText) + 10;
 		int headerH = 13;
 
@@ -162,7 +215,7 @@ public final class DebugHud {
 		// 2. CARD 1: PERFORMANCE (LIVE FPS & FT WAVE)
 		// ==========================================
 		int cardW = 160;
-		int card1H = 68;
+		int card1H = 82;
 		drawGlassBox(context, x, y, cardW, card1H, 0xFF00E5FF, 0xD00A1118);
 
 		// Row 1: Live FPS
@@ -171,8 +224,11 @@ public final class DebugHud {
 		ScratchPool.appendFixed(sb, (double) liveFps, 1);
 		context.drawText(tr, sb.toString(), x + 6, y + 5, 0xFFFFE082, false);
 
-		String statusTag = liveFps >= 120 ? "[HIGH/STABLE]" : "[STABLE]";
-		context.drawText(tr, statusTag, x + cardW - tr.getWidth(statusTag) - 6, y + 5, 0xFF38EF7D, false);
+		SpikeMonitor statusMonitor = SpikeMonitor.get();
+		double statusP95 = statusMonitor.percentileMs(0.95);
+		boolean statusBreach = statusMonitor.lastSpikeAgeMs() >= 0L && statusMonitor.lastSpikeAgeMs() < 5000L || statusP95 >= Math.max(33.3, M3FrametimeMod.config().spikeThresholdMs);
+		String statusTag = statusBreach ? "[STUTTER]" : (liveFps >= 120 ? "[HIGH/STABLE]" : "[STABLE]");
+		context.drawText(tr, statusTag, x + cardW - tr.getWidth(statusTag) - 6, y + 5, statusBreach ? 0xFFF85149 : 0xFF38EF7D, false);
 
 		// Micro FPS bar line under FPS row
 		context.fill(x + 6, y + 15, x + cardW - 6, y + 16, 0x5500E5FF);
@@ -193,26 +249,40 @@ public final class DebugHud {
 		String minMaxStr = sb.toString();
 		context.drawText(tr, minMaxStr, x + cardW - tr.getWidth(minMaxStr) - 6, y + 21, 0xFF90A4AE, false);
 
+		SpikeMonitor frameStats = SpikeMonitor.get();
+		sb.setLength(0);
+		sb.append("P95/P99: ");
+		ScratchPool.appendFixed(sb, frameStats.percentileMs(0.95), 1).append("/");
+		ScratchPool.appendFixed(sb, frameStats.percentileMs(0.99), 1).append(" ms · 1%-low: ");
+		double lowMs = frameStats.percentileMs(0.99);
+		ScratchPool.appendFixed(sb, lowMs > 0.0 ? 1000.0 / lowMs : 0.0, 0).append(" FPS");
+		context.drawText(tr, sb.toString(), x + 6, y + 34, 0xFFCBD5E1, false);
+
 		// Row 3: Smooth Live Cyan Sine-Wave Curve
-		int waveY = y + 42;
+		int waveY = y + 54;
 		int waveH = 14;
 		int waveStartX = x + 6;
 		int waveEndX = x + cardW - 6;
+		boolean useFastMath = M3FrametimeMod.config().useFastMath;
 
 		// Wave background glow track
 		context.fill(waveStartX, waveY - waveH / 2, waveEndX, waveY + waveH / 2, 0x2000E5FF);
 
 		int prevWavePtY = waveY;
-		for (int px = waveStartX; px < waveEndX; px++) {
+		for (int px = waveStartX; px < waveEndX; px += 2) {
 			float normX = (float) (px - waveStartX) / (float) (waveEndX - waveStartX);
-			float s1 = (float) Math.sin((normX * 9.0f) + wavePhase);
-			float s2 = (float) Math.cos((normX * 4.0f) - wavePhase * 0.7f);
+			float s1 = useFastMath
+				? FastMath.sin((normX * 9.0f) + wavePhase)
+				: (float) Math.sin((normX * 9.0f) + wavePhase);
+			float s2 = useFastMath
+				? FastMath.cos((normX * 4.0f) - wavePhase * 0.7f)
+				: (float) Math.cos((normX * 4.0f) - wavePhase * 0.7f);
 			int curWavePtY = waveY + (int) ((s1 * 0.7f + s2 * 0.3f) * (waveH / 2.2f));
 
 			if (px > waveStartX) {
 				int minY = Math.min(prevWavePtY, curWavePtY);
 				int maxY = Math.max(prevWavePtY, curWavePtY);
-				context.fill(px, minY, px + 1, maxY + 1, 0xFF00F2FE);
+				context.fill(px, minY, Math.min(waveEndX, px + 2), maxY + 1, 0xFF00F2FE);
 			}
 			prevWavePtY = curWavePtY;
 		}
@@ -225,10 +295,10 @@ public final class DebugHud {
 		int card2H = 28;
 		drawGlassBox(context, x, y, cardW, card2H, 0xFFFFA726, 0xD00A1118);
 
-		context.drawText(tr, "TPS: 20.0 (SYNCED)", x + 6, y + 5, 0xFFFFFFFF, false);
+		context.drawText(tr, "SERVER SYNC", x + 6, y + 5, 0xFFFFFFFF, false);
 
 		// Live Ping Query
-		int livePing = 14;
+		int livePing = -1;
 		if (client.getNetworkHandler() != null && client.player != null) {
 			PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(client.player.getUuid());
 			if (entry != null && entry.getLatency() >= 0) {
@@ -237,33 +307,27 @@ public final class DebugHud {
 		}
 
 		sb.setLength(0);
-		sb.append("PING: ");
-		sb.append(livePing).append(" ms");
+		if (livePing >= 0) {
+			sb.append("PING: ").append(livePing).append(" ms");
+		} else {
+			sb.append("PING: unavailable");
+		}
 		context.drawText(tr, sb.toString(), x + 6, y + 16, 0xFFFFCA28, false);
 
 		y += card2H + 5;
 
 		// ==========================================
-		// 4. CARD 3: CPU/GPU HARDWARE GAUGES
+		// 4. CARD 3: MEASURED HARDWARE STATUS
 		// ==========================================
 		int card3H = 58;
 		drawGlassBox(context, x, y, cardW, card3H, 0xFFFFA726, 0xD00A1118);
 
-		context.drawText(tr, "CPU/GPU", x + 6, y + 4, 0xFFFFFFFF, false);
-
-		// P-Core Affinity: LOCKED
-		context.drawText(tr, "P-CORE AFFINITY: ", x + 6, y + 15, 0xFFFFFFFF, false);
-		int affW = tr.getWidth("P-CORE AFFINITY: ");
-		context.drawText(tr, "LOCKED", x + 6 + affW, y + 15, 0xFF00F2FE, false);
-		drawProgressBar(context, x + 6, y + 25, cardW - 12, 3, 1.0f, 0xFF00F2FE);
-
-		// Live GPU Util
-		context.drawText(tr, "GPU UTIL: " + gpuPercent + "%", x + 6, y + 30, 0xFFFFCA28, false);
-		drawProgressBar(context, x + 6, y + 40, cardW - 12, 3, gpuPercent / 100.0f, 0xFFFFA726);
-
-		// Live CPU Load
-		context.drawText(tr, "CPU LOAD: " + cpuPercent + "%", x + 6, y + 44, 0xFFFFFFFF, false);
-		drawProgressBar(context, x + 6, y + 53, cardW - 12, 3, cpuPercent / 100.0f, 0xFF00F2FE);
+		context.drawText(tr, "HARDWARE STATUS", x + 6, y + 4, 0xFFFFFFFF, false);
+		context.drawText(tr, "GPU UTIL: unavailable", x + 6, y + 15, 0xFFFFCA28, false);
+		context.drawText(tr, "CPU UTIL: unavailable", x + 6, y + 27, 0xFFFFFFFF, false);
+		TelemetrySnapshot telemetry = TelemetrySnapshot.current();
+		context.drawText(tr, "SHADER API: " + (telemetry.shaderActive() ? "active" : "inactive"), x + 6, y + 39, 0xFF00F2FE, false);
+		context.drawText(tr, "SHADOW PASS: " + (telemetry.shadowPass() ? "active" : "idle"), x + 6, y + 51, 0xFF90A4AE, false);
 
 		y += card3H + 5;
 
@@ -290,13 +354,9 @@ public final class DebugHud {
 		context.drawText(tr, sb.toString(), x + 6, y + 15, 0xFFFFCA28, false);
 		drawProgressBar(context, x + 6, y + 24, memCardW - 12, 3, (float) (heapUsed / (double) Math.max(1L, heapMax)), 0xFFFFA726);
 
-		// VRAM (TBDR Direct)
-		double vramGb = StackCompat.isShaderActive() ? 2.8 : 1.1;
-		sb.setLength(0);
-		sb.append("VRAM: ");
-		ScratchPool.appendFixed(sb, vramGb, 1).append(" GB");
-		context.drawText(tr, sb.toString(), x + 6, y + 29, 0xFF00F2FE, false);
-		drawProgressBar(context, x + 6, y + 39, memCardW - 12, 3, (float) (vramGb / 8.0), 0xFF00F2FE);
+		MemoryPressureProbe pressure = MemoryPressureProbe.get();
+		String pressureText = pressure.physicalPressureState();
+		context.drawText(tr, pressureText + " free: " + pressure.freePhysicalMb() + "/" + pressure.pressureThresholdMb() + " MB", x + 6, y + 29, pressure.underPressure() ? 0xFFF85149 : 0xFF00F2FE, false);
 
 		// ==========================================
 		// 6. STATUS MATRIX BADGE (NEXT TO MEMORY)
@@ -312,11 +372,22 @@ public final class DebugHud {
 
 		// Right: Status Text
 		int textStartX = ledStartX + 22;
-		context.drawText(tr, "STATUS: OK-000", textStartX, y + 7, 0xFFFFA726, false);
-		context.drawText(tr, "OPTIMAL PERFORMANCE", textStartX, y + 17, 0xFF38EF7D, false);
-		context.drawText(tr, "P-CORE MACH AFFINITY", textStartX, y + 27, 0xFF00F2FE, false);
-		context.drawText(tr, "ZERO STUTTER ACTIVE", textStartX, y + 37, 0xFF90A4AE, false);
+		SpikeMonitor monitor = SpikeMonitor.get();
+		boolean recentSpike = monitor.hasSpike() && monitor.lastSpikeAgeMs() >= 0 && monitor.lastSpikeAgeMs() < 5000L;
+		context.drawText(tr, "STATUS: " + (recentSpike ? "STUTTER" : "STABLE"), textStartX, y + 7, recentSpike ? 0xFFF85149 : 0xFF38EF7D, false);
+		context.drawText(tr, "FPS: measured 250ms", textStartX, y + 17, 0xFF38EF7D, false);
+		TelemetrySnapshot current = TelemetrySnapshot.current();
+		StringBuilder pacingText = ScratchPool.get().stringBuilder();
+		pacingText.append("PACING EMA: ");
+		if (current.emaFrametimeMs() > 0.0) {
+			ScratchPool.appendFixed(pacingText, current.emaFrametimeMs(), 1).append(" ms");
+		} else {
+			pacingText.append("n/a");
+		}
+		context.drawText(tr, pacingText.toString(), textStartX, y + 27, 0xFF00F2FE, false);
+		context.drawText(tr, recentSpike ? "SPIKE DETECTED" : "NO RECENT SPIKE", textStartX, y + 37, 0xFF90A4AE, false);
 	}
+
 
 	private static void drawGlassBox(DrawContext context, int x, int y, int width, int height, int borderColor, int bgColor) {
 		// Background box with glassmorphic transparency
@@ -341,17 +412,6 @@ public final class DebugHud {
 	}
 
 	private static void drawLedMatrixIcon(DrawContext context, int startX, int startY) {
-		// 5x7 glowing dot matrix icon (Thunderbolt / Pulse shape)
-		boolean[][] pattern = {
-			{false, false, true, false, false},
-			{false, true,  true, false, false},
-			{true,  true,  true, false, false},
-			{true,  true,  true, true,  true },
-			{false, false, true, true,  true },
-			{false, false, true, true,  false},
-			{false, false, true, false, false}
-		};
-
 		int dotSize = 2;
 		int gap = 1;
 
@@ -360,7 +420,7 @@ public final class DebugHud {
 				int px = startX + c * (dotSize + gap);
 				int py = startY + r * (dotSize + gap);
 
-				if (pattern[r][c]) {
+				if ((LED_PATTERN[r] & (1 << c)) != 0) {
 					context.fill(px, py, px + dotSize, py + dotSize, 0xFFFFA726); // Bright Glowing Amber
 				} else {
 					context.fill(px, py, px + dotSize, py + dotSize, 0x30FFA726); // Dim Background LED

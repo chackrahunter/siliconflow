@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "minecraft": "${minecraft_version}",
+  "mappings": "${yarn_mappings}",
+  "fabricApi": "${fabric_version}",
+  "fabricLoader": "${loader_version}",
+  "artifactSelection": "exact-minecraft-version"
+}

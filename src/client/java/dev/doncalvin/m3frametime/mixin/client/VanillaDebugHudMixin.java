@@ -14,7 +14,7 @@ import java.util.List;
  */
 @Mixin(DebugHud.class)
 public abstract class VanillaDebugHudMixin {
-	@Inject(method = "getLeftText", at = @At("RETURN"), require = 0)
+	@Inject(method = "getLeftText", at = @At("RETURN"), require = 1)
 	private void m3frametime$appendStutterInfo(CallbackInfoReturnable<List<String>> cir) {
 		List<String> lines = cir.getReturnValue();
 		if (lines == null) {

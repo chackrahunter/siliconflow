@@ -2,10 +2,13 @@
 	"required": true,
 	"minVersion": "0.8",
 	"package": "dev.doncalvin.m3frametime.mixin.client",
+	"refmap": "client-m3frametime.refmap.json",
 	"compatibilityLevel": "JAVA_21",
 	"plugin": "dev.doncalvin.m3frametime.mixin.M3MixinPlugin",
 	"client": [
 		"MinecraftClientMixin",
+		"OptionsScreenMixin",
+		"ScreenAccessor",
 		"WorldRendererMixin",
 		"WindowMixin",
 		"ParticleManagerMixin",
@@ -29,17 +32,10 @@
 		"SoundSystemMixin",
 		"ItemStackMixin",
 		"ItemRendererGlintMixin",
-		"ItemEntityRendererMixin",
-		"ItemFrameEntityRendererMixin",
-		"ArmorStandEntityRendererMixin",
-		"ExperienceOrbEntityRendererMixin",
-		"LightmapTextureManagerMixin",
 		"LivingEntityPotionSwirlMixin",
-		"VanillaDebugHudMixin",
-		"GlStateManagerMixin",
-		"FrustumMixin"
+		"VanillaDebugHudMixin"
 	],
 	"injectors": {
-		"defaultRequire": 0
+		"defaultRequire": 1
 	}
 }

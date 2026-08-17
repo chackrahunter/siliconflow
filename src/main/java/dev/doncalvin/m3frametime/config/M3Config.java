@@ -3,6 +3,8 @@ package dev.doncalvin.m3frametime.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.doncalvin.m3frametime.M3FrametimeMod;
+import dev.doncalvin.m3frametime.engine.ChipTier;
+import dev.doncalvin.m3frametime.engine.SiliconChipInfo;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -10,6 +12,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
  * Ultra-performance configuration for 8 GB Apple Silicon M3.
@@ -31,6 +34,10 @@ public final class M3Config {
 	public boolean overlayEnabled = true;
 	/** Console logging for spikes (disabled by default to prevent disk I/O hitching). */
 	public boolean spikeLogging = false;
+	/** Bounded in-memory diagnostics recorder; no disk writes unless spikeLogging is enabled. */
+	public boolean performanceRecorderEnabled = false;
+	/** Number of measured frame samples retained by the recorder. */
+	public int performanceRecorderWindow = 240;
 	/** Show last micro-stutter + diagnostics on vanilla F3 left panel. */
 	public boolean f3StutterInfo = true;
 
@@ -38,36 +45,36 @@ public final class M3Config {
 	public boolean preferIntegerScale = true;
 	/**
 	 * GLFW swap interval: -1 leave alone, 0 = uncapped (full M-chip FPS), 1 = VSync.
-	 * Defaults to 0 so the GPU is not wait-idle on broken macOS VSync.
+	 * Defaults to -1 so Minecraft/Iris retain ownership of VSync and pacing.
 	 */
-	public int swapInterval = 0;
+	public int swapInterval = -1;
 	/** Raise Minecraft render-thread priority and native Darwin QoS so P-cores prioritize the game. */
-	public boolean boostRenderThreadPriority = true;
-	public boolean boostDarwinQos = true;
+	public boolean boostRenderThreadPriority = false;
+	public boolean boostDarwinQos = false;
 
 	/**
 	 * Soft-boost Sodium chunk_builder_threads to an M-chip-friendly count (cores−1)
 	 * via reflection / sodium-options.json — no hard Sodium compile dependency.
 	 */
-	public boolean boostSodiumChunkBuilderThreads = true;
+	public boolean boostSodiumChunkBuilderThreads = false;
 	/**
 	 * Explicit Sodium worker count. 0 = auto (availableProcessors − 1).
 	 */
 	public int sodiumChunkBuilderThreads = 0;
 	/** Nudge Sodium "Chunk Render Task Executor" threads to NORM+1 and Darwin USER_INITIATED. */
-	public boolean boostSodiumWorkerPriority = true;
+	public boolean boostSodiumWorkerPriority = false;
 
-	/** Iris & Shader Shadow-Pass Ultra-Culling (particles, far signs/banners, items in shadow maps). */
-	public boolean optimizeShadowPass = true;
-	public double shadowEntityDistance = 32.0;
+	/** Compatibility switch retained for config migration; shadow-pass culling is never applied. */
+	public boolean optimizeShadowPass = false;
+	public double shadowEntityDistance = 0.0;
 
 	public boolean entityCull = true;
 	public double entityCullDistance = 80.0;
 	/**
 	 * When Sodium is loaded: also apply cheap AABB frustum reject in shouldRender.
 	 */
-	public boolean overrideSodiumEntityCull = true;
-	public boolean entityShadowSkip = true;
+	public boolean overrideSodiumEntityCull = false;
+	public boolean entityShadowSkip = false;
 	/** Skip non-player nametag / label draws. */
 	public boolean skipEntityNametags = false;
 
@@ -135,9 +142,21 @@ public final class M3Config {
 
 	public boolean soundPool = true;
 	public int workerThreads = 0;
-	public double memoryPressureFreeMbThreshold = 128.0;
+	public double memoryPressureFreeMbThreshold = 384.0;
+	/** Recovery threshold must be higher than the enter threshold to prevent oscillation. */
+	public double memoryPressureRecoverMbThreshold = 768.0;
+	/** Enable asynchronous heap/physical-memory sampling for mod-owned pressure policy. */
+	public boolean memoryPolicyEnabled = true;
+	/** Number of consecutive fresh samples required before entering pressure mode. */
+	public int memoryPressureEnterSamples = 3;
+	/** Number of consecutive recovered samples required before leaving pressure mode. */
+	public int memoryPressureRecoverSamples = 20;
+	/** Heap occupancy ratio that enters pressure mode; never changes -Xmx. */
+	public double heapPressureEnterRatio = 0.90;
+	/** Heap occupancy ratio that clears heap pressure. */
+	public double heapPressureRecoverRatio = 0.80;
 
-	/** Periodic soft cache hints: clear ScratchPool, request particle queue trim. Never calls System.gc(). */
+	/** Periodic soft cache hints: clear ScratchPool, request particle queue trim. Never calls the JVM collector. */
 	public boolean softCacheHints = true;
 	/** Client ticks between soft hints (~20 ticks/s). */
 	public int softCacheHintIntervalTicks = 40;
@@ -163,7 +182,7 @@ public final class M3Config {
 	public static M3Config defaults() {
 		M3Config c = new M3Config();
 		c.applyProfile();
-		c.pacingEnabled = false;
+		applyChipDefaults(c);
 		return c;
 	}
 
@@ -174,16 +193,14 @@ public final class M3Config {
 	public void applyProfile() {
 		String p = performanceProfile == null ? "PLAYABLE" : performanceProfile.trim().toUpperCase();
 		performanceProfile = p;
-		pacingEnabled = false;
 		retinaGuard = false;
-		boostRenderThreadPriority = true;
-		boostDarwinQos = true;
+		boostRenderThreadPriority = false;
+		boostDarwinQos = false;
 		useFastMath = true;
-		optimizeShadowPass = true;
-		overlayEnabled = true;
+		optimizeShadowPass = false;
 		spikeLogging = false;
 		spikeThresholdMs = 35;
-		memoryPressureFreeMbThreshold = 128.0;
+		memoryPressureFreeMbThreshold = 384.0;
 		switch (p) {
 			case "TELEMETRY" -> {
 				swapInterval = -1;
@@ -236,10 +253,10 @@ public final class M3Config {
 			}
 			case "BALANCED" -> {
 				swapInterval = -1;
-				boostRenderThreadPriority = true;
-				boostDarwinQos = true;
-				boostSodiumChunkBuilderThreads = true;
-				boostSodiumWorkerPriority = true;
+				boostRenderThreadPriority = false;
+				boostDarwinQos = false;
+				boostSodiumChunkBuilderThreads = false;
+				boostSodiumWorkerPriority = false;
 				entityCull = true;
 				entityCullDistance = 96.0;
 				overrideSodiumEntityCull = false;
@@ -253,7 +270,7 @@ public final class M3Config {
 				farSignDistance = 32.0;
 				skipFarBannerPatterns = true;
 				farBannerDistance = 40.0;
-				entityShadowSkip = true;
+				entityShadowSkip = false;
 				skipClouds = false;
 				skipWeatherParticles = false;
 				skipWeatherGeometry = false;
@@ -292,23 +309,23 @@ public final class M3Config {
 				ambientParticleThrottle = true;
 				farSoundSkip = true;
 				farSoundDistance = 64.0;
-				memoryPressureFreeMbThreshold = 128.0;
+				memoryPressureFreeMbThreshold = 384.0;
 				softCacheHints = true;
 				softCacheHintIntervalTicks = 60;
-				optimizeShadowPass = true;
-				shadowEntityDistance = 40.0;
+				optimizeShadowPass = false;
+				shadowEntityDistance = 0.0;
 			}
 			case "MAX" -> {
 				performanceProfile = "MAX";
-				swapInterval = 0;
-				boostRenderThreadPriority = true;
-				boostDarwinQos = true;
-				boostSodiumChunkBuilderThreads = true;
+				swapInterval = -1;
+				boostRenderThreadPriority = false;
+				boostDarwinQos = false;
+				boostSodiumChunkBuilderThreads = false;
 				sodiumChunkBuilderThreads = 0;
-				boostSodiumWorkerPriority = true;
+				boostSodiumWorkerPriority = false;
 				entityCull = true;
 				entityCullDistance = 64.0;
-				overrideSodiumEntityCull = true;
+				overrideSodiumEntityCull = false;
 				skipEntityNametags = true;
 				particleCull = true;
 				particleCullDistance = 32.0;
@@ -319,7 +336,7 @@ public final class M3Config {
 				farSignDistance = 20.0;
 				skipFarBannerPatterns = true;
 				farBannerDistance = 24.0;
-				entityShadowSkip = true;
+				entityShadowSkip = false;
 				skipClouds = true;
 				skipWeatherParticles = true;
 				skipWeatherGeometry = true;
@@ -358,24 +375,24 @@ public final class M3Config {
 				ambientParticleThrottle = true;
 				farSoundSkip = true;
 				farSoundDistance = 36.0;
-				memoryPressureFreeMbThreshold = 128.0;
+				memoryPressureFreeMbThreshold = 384.0;
 				softCacheHints = true;
 				softCacheHintIntervalTicks = 40;
-				optimizeShadowPass = true;
-				shadowEntityDistance = 28.0;
+				optimizeShadowPass = false;
+				shadowEntityDistance = 0.0;
 			}
 			default -> {
 				// PLAYABLE — default: looks pristine, RD 100% user-owned, ultra-optimized for 100+ FPS.
 				performanceProfile = "PLAYABLE";
-				swapInterval = 0;
-				boostRenderThreadPriority = true;
-				boostDarwinQos = true;
-				boostSodiumChunkBuilderThreads = true;
+				swapInterval = -1;
+				boostRenderThreadPriority = false;
+				boostDarwinQos = false;
+				boostSodiumChunkBuilderThreads = false;
 				sodiumChunkBuilderThreads = 0;
-				boostSodiumWorkerPriority = true;
+				boostSodiumWorkerPriority = false;
 				entityCull = true;
 				entityCullDistance = 80.0;
-				overrideSodiumEntityCull = true;
+				overrideSodiumEntityCull = false;
 				skipEntityNametags = false;
 				particleCull = true;
 				particleCullDistance = 40.0;
@@ -386,7 +403,7 @@ public final class M3Config {
 				farSignDistance = 24.0;
 				skipFarBannerPatterns = true;
 				farBannerDistance = 32.0;
-				entityShadowSkip = true;
+				entityShadowSkip = false;
 				skipClouds = false;
 				skipWeatherParticles = false;
 				skipWeatherGeometry = false;
@@ -425,12 +442,35 @@ public final class M3Config {
 				ambientParticleThrottle = true;
 				farSoundSkip = true;
 				farSoundDistance = 56.0;
-				memoryPressureFreeMbThreshold = 128.0;
+				memoryPressureFreeMbThreshold = 384.0;
 				softCacheHints = true;
 				softCacheHintIntervalTicks = 40;
-				optimizeShadowPass = true;
-				shadowEntityDistance = 32.0;
+				optimizeShadowPass = false;
+				shadowEntityDistance = 0.0;
 			}
+		}
+		applyChipDefaults(this);
+	}
+
+	public static void applyChipDefaults(M3Config cfg) {
+		ChipTier tier = SiliconChipInfo.getChipTier();
+		switch (tier) {
+			case BASE:
+				cfg.maxParticles = Math.min(cfg.maxParticles, SiliconChipInfo.getMaxParticles());
+				cfg.entityCullDistance = Math.min(cfg.entityCullDistance, SiliconChipInfo.getEntityCullDistance());
+				break;
+			case PRO:
+				cfg.maxParticles = Math.min(cfg.maxParticles, SiliconChipInfo.getMaxParticles());
+				cfg.entityCullDistance = Math.min(cfg.entityCullDistance, SiliconChipInfo.getEntityCullDistance());
+				break;
+			case MAX:
+				cfg.maxParticles = Math.min(cfg.maxParticles, SiliconChipInfo.getMaxParticles());
+				cfg.entityCullDistance = Math.min(cfg.entityCullDistance, SiliconChipInfo.getEntityCullDistance());
+				break;
+			case ULTRA:
+				cfg.maxParticles = Math.min(cfg.maxParticles, SiliconChipInfo.getMaxParticles());
+				cfg.entityCullDistance = Math.min(cfg.entityCullDistance, SiliconChipInfo.getEntityCullDistance());
+				break;
 		}
 	}
 
@@ -444,48 +484,97 @@ public final class M3Config {
 		try (Reader reader = Files.newBufferedReader(file)) {
 			M3Config loaded = GSON.fromJson(reader, M3Config.class);
 			if (loaded == null) {
-				return defaults();
+				throw new IllegalStateException("empty config");
 			}
-			if (loaded.performanceProfile == null || loaded.performanceProfile.isBlank()) {
-				loaded.performanceProfile = "PLAYABLE";
-			}
-			String profile = loaded.performanceProfile.trim().toUpperCase();
-			if (!"TELEMETRY".equals(profile)
-				&& !"BALANCED".equals(profile)
-				&& !"MAX".equals(profile)
-				&& !"PLAYABLE".equals(profile)) {
-				loaded.performanceProfile = "PLAYABLE";
-				profile = "PLAYABLE";
-			}
-			if ("MAX".equals(profile) || "PLAYABLE".equals(profile)) {
-				loaded.pacingEnabled = false;
-				loaded.retinaGuard = false;
-				loaded.boostRenderThreadPriority = true;
-				loaded.boostDarwinQos = true;
-				loaded.boostSodiumChunkBuilderThreads = true;
-				loaded.boostSodiumWorkerPriority = true;
-				loaded.useFastMath = true;
-				loaded.optimizeShadowPass = true;
-				loaded.overlayEnabled = true;
-				if (loaded.swapInterval < 0) {
-					loaded.swapInterval = 0;
+			M3Config merged = defaults();
+			// Gson has no field-presence merge; overlay the parsed values onto a fully
+			// initialized default object so partial files cannot zero-fill new fields.
+			com.google.gson.JsonObject raw = com.google.gson.JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+			for (var entry : raw.entrySet()) {
+				try {
+					var field = M3Config.class.getField(entry.getKey());
+					Object value = GSON.fromJson(entry.getValue(), field.getGenericType());
+					field.set(merged, value);
+				} catch (NoSuchFieldException ignored) {
+					M3FrametimeMod.LOGGER.debug("Ignoring unknown config field: {}", entry.getKey());
 				}
 			}
-			return loaded;
+			if (merged.performanceProfile == null || merged.performanceProfile.isBlank()) merged.performanceProfile = "PLAYABLE";
+			String profile = merged.performanceProfile.trim().toUpperCase();
+			if (!profile.equals("TELEMETRY") && !profile.equals("BALANCED") && !profile.equals("MAX") && !profile.equals("PLAYABLE")) merged.performanceProfile = "PLAYABLE";
+			sanitize(merged);
+			return merged;
 		} catch (Exception e) {
 			M3FrametimeMod.LOGGER.warn("Failed to load config, using defaults: {}", e.toString());
-			return defaults();
+			M3Config fallback = defaults();
+			fallback.save();
+			return fallback;
 		}
 	}
 
-	public void save() {
+	private static void sanitize(M3Config cfg) {
+		if (!Double.isFinite(cfg.pacingEmaAlpha) || cfg.pacingEmaAlpha <= 0.0 || cfg.pacingEmaAlpha > 1.0) {
+			cfg.pacingEmaAlpha = 0.12;
+		}
+		if (cfg.spikeThresholdMs < 1L) {
+			cfg.spikeThresholdMs = 35L;
+		}
+		cfg.sodiumChunkBuilderThreads = Math.max(0, cfg.sodiumChunkBuilderThreads);
+		cfg.workerThreads = Math.max(0, cfg.workerThreads);
+		cfg.performanceRecorderWindow = Math.max(32, Math.min(2048, cfg.performanceRecorderWindow));
+		cfg.maxParticles = Math.max(0, cfg.maxParticles);
+		cfg.softCacheHintIntervalTicks = Math.max(1, cfg.softCacheHintIntervalTicks);
+		cfg.memoryPressureFreeMbThreshold = finiteRange(cfg.memoryPressureFreeMbThreshold, 384.0, 0.0, 16384.0);
+		cfg.memoryPressureRecoverMbThreshold = finiteRange(cfg.memoryPressureRecoverMbThreshold, 768.0, cfg.memoryPressureFreeMbThreshold, 16384.0);
+		cfg.memoryPressureEnterSamples = Math.max(1, Math.min(20, cfg.memoryPressureEnterSamples));
+		cfg.memoryPressureRecoverSamples = Math.max(1, Math.min(120, cfg.memoryPressureRecoverSamples));
+		cfg.heapPressureEnterRatio = finiteRange(cfg.heapPressureEnterRatio, 0.90, 0.50, 0.99);
+		cfg.heapPressureRecoverRatio = finiteRange(cfg.heapPressureRecoverRatio, 0.80, 0.25, cfg.heapPressureEnterRatio);
+		cfg.farLimbTickMask = Math.max(0, cfg.farLimbTickMask);
+		cfg.swapInterval = Math.max(-1, Math.min(1, cfg.swapInterval));
+
+		cfg.shadowEntityDistance = nonNegative(cfg.shadowEntityDistance, 32.0);
+		cfg.entityCullDistance = nonNegative(cfg.entityCullDistance, 80.0);
+		cfg.particleCullDistance = nonNegative(cfg.particleCullDistance, 40.0);
+		cfg.blockEntityCullDistance = nonNegative(cfg.blockEntityCullDistance, 48.0);
+		cfg.farSignDistance = nonNegative(cfg.farSignDistance, 24.0);
+		cfg.farBannerDistance = nonNegative(cfg.farBannerDistance, 32.0);
+		cfg.farItemEntityDistance = nonNegative(cfg.farItemEntityDistance, 40.0);
+		cfg.farExperienceOrbDistance = nonNegative(cfg.farExperienceOrbDistance, 36.0);
+		cfg.farPotionSwirlDistance = nonNegative(cfg.farPotionSwirlDistance, 56.0);
+		cfg.farSoundDistance = nonNegative(cfg.farSoundDistance, 56.0);
+		cfg.farLimbDistance = nonNegative(cfg.farLimbDistance, 72.0);
+		cfg.entityDistanceScaling = finiteRange(cfg.entityDistanceScaling, 1.0, 0.0, 1.0);
+	}
+
+	private static double nonNegative(double value, double fallback) {
+		return Double.isFinite(value) && value >= 0.0 ? value : fallback;
+	}
+
+	private static double finiteRange(double value, double fallback, double min, double max) {
+		return Double.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
+	}
+
+	public synchronized void save() {
+		Path target = path();
+		Path temporary = target.resolveSibling(target.getFileName() + ".tmp");
 		try {
-			Files.createDirectories(path().getParent());
-			try (Writer writer = Files.newBufferedWriter(path())) {
+			Files.createDirectories(target.getParent());
+			try (Writer writer = Files.newBufferedWriter(temporary)) {
 				GSON.toJson(this, writer);
+			}
+			try {
+				Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+			} catch (java.nio.file.AtomicMoveNotSupportedException e) {
+				Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
 			}
 		} catch (IOException e) {
 			M3FrametimeMod.LOGGER.warn("Failed to save config: {}", e.toString());
+			try {
+				Files.deleteIfExists(temporary);
+			} catch (IOException cleanupError) {
+				M3FrametimeMod.LOGGER.debug("Failed to remove temporary config: {}", cleanupError.toString());
+			}
 		}
 	}
 }

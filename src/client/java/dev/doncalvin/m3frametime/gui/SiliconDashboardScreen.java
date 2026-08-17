@@ -6,12 +6,15 @@ import dev.doncalvin.m3frametime.config.M3Config;
 import dev.doncalvin.m3frametime.engine.SiliconBenchmark;
 import dev.doncalvin.m3frametime.engine.SiliconCpuTopology;
 import dev.doncalvin.m3frametime.telemetry.DebugHud;
+import dev.doncalvin.m3frametime.telemetry.GcProbe;
+import dev.doncalvin.m3frametime.telemetry.MemoryPressureProbe;
 import dev.doncalvin.m3frametime.telemetry.SpikeMonitor;
 import dev.doncalvin.m3frametime.telemetry.StutterErrorCode;
 import dev.doncalvin.m3frametime.version.VersionDetector;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
@@ -41,74 +44,173 @@ public final class SiliconDashboardScreen extends Screen {
 
 	private final List<ToggleWidget> toggles = new ArrayList<>();
 	private final List<ProfileButton> profileButtons = new ArrayList<>();
+	private final List<ButtonWidget> vanillaControls = new ArrayList<>();
+	private ButtonWidget backButton;
+	private String pendingProfile;
+	private String observedProfile;
+	private String previousProfile;
+	private long lastProfileChangeMillis;
+	private int cardX;
+	private int cardY;
+	private int cardW;
+	private int cardH;
+
+	private void calculateLayout() {
+		this.cardW = Math.max(1, Math.min(680, this.width - 40));
+		this.cardH = Math.max(1, Math.min(390, this.height - 44));
+		this.cardX = (this.width - this.cardW) / 2;
+		this.cardY = Math.max(12, (this.height - this.cardH) / 2);
+	}
+
+	private void ensureWidgetsInitialized() {
+		if (this.profileButtons.isEmpty() || this.toggles.isEmpty() || this.vanillaControls.isEmpty()) {
+			init();
+		}
+	}
+
+	private void addVanillaControl(ButtonWidget button) {
+		this.vanillaControls.add(this.addDrawableChild(button));
+	}
+
+	private M3Config liveConfig() {
+		return M3FrametimeMod.config();
+	}
+
+	private String activeProfile() {
+		String profile = liveConfig().performanceProfile;
+		return profile == null || profile.isBlank() ? "PLAYABLE" : profile.trim().toUpperCase();
+	}
 
 	public SiliconDashboardScreen(Screen parent) {
 		super(Text.literal("SiliconFlow Dashboard"));
 		this.parent = parent;
+		this.observedProfile = activeProfile();
+	}
+
+	private void observeProfileChange() {
+		String current = activeProfile();
+		if (this.observedProfile == null) {
+			this.observedProfile = current;
+		} else if (!this.observedProfile.equals(current)) {
+			this.previousProfile = this.observedProfile;
+			this.observedProfile = current;
+			this.lastProfileChangeMillis = System.currentTimeMillis();
+		}
+	}
+
+	private String lastProfileChangeText() {
+		if (this.lastProfileChangeMillis == 0L) return "none in this session";
+		long seconds = Math.max(0L, (System.currentTimeMillis() - this.lastProfileChangeMillis) / 1000L);
+		return seconds == 0L ? "just now" : seconds + "s ago";
 	}
 
 	@Override
 	protected void init() {
 		this.toggles.clear();
 		this.profileButtons.clear();
+		this.vanillaControls.clear();
+		calculateLayout();
 
-		int cardW = Math.min(680, this.width - 40);
-		int cardX = (this.width - cardW) / 2;
-		int cardY = 32;
+		int cardW = this.cardW;
+		int cardX = this.cardX;
+		int cardY = this.cardY;
 
-		// 1-Click Profile Buttons (Tab 1)
+		// Vanilla ButtonWidgets are the actual profile controls; custom cards below provide status styling.
 		int btnW = (cardW - 30) / 4;
 		int btnY = cardY + 70;
-		profileButtons.add(new ProfileButton(cardX + 10, btnY, btnW, 24, "PLAYABLE", "★ Playable (240+ FPS)"));
-		profileButtons.add(new ProfileButton(cardX + 15 + btnW, btnY, btnW, 24, "MAX", "⚡ Ultra (500+ FPS)"));
-		profileButtons.add(new ProfileButton(cardX + 20 + btnW * 2, btnY, btnW, 24, "BALANCED", "🔋 Battery Saver"));
-		profileButtons.add(new ProfileButton(cardX + 25 + btnW * 3, btnY, btnW, 24, "TELEMETRY", "📊 Telemetry Only"));
+		profileButtons.add(new ProfileButton(cardX + 10, btnY, btnW, 24, "PLAYABLE", "★ Playable"));
+		profileButtons.add(new ProfileButton(cardX + 15 + btnW, btnY, btnW, 24, "MAX", "⚡ MAX"));
+		profileButtons.add(new ProfileButton(cardX + 20 + btnW * 2, btnY, btnW, 24, "BALANCED", "🔋 Balanced"));
+		profileButtons.add(new ProfileButton(cardX + 25 + btnW * 3, btnY, btnW, 24, "TELEMETRY", "📊 Diagnostics"));
+
+		addVanillaControl(ButtonWidget.builder(Text.literal("PLAYABLE"), b -> applyProfile("PLAYABLE"))
+			.dimensions(cardX + 10, btnY, btnW, 24).build());
+		addVanillaControl(ButtonWidget.builder(Text.literal("MAX"), b -> applyProfile("MAX"))
+			.dimensions(cardX + 15 + btnW, btnY, btnW, 24).build());
+		addVanillaControl(ButtonWidget.builder(Text.literal("BALANCED"), b -> applyProfile("BALANCED"))
+			.dimensions(cardX + 20 + btnW * 2, btnY, btnW, 24).build());
+		addVanillaControl(ButtonWidget.builder(Text.literal("TELEMETRY"), b -> applyProfile("TELEMETRY"))
+			.dimensions(cardX + 25 + btnW * 3, btnY, btnW, 24).build());
+		this.backButton = this.addDrawableChild(ButtonWidget.builder(Text.literal("Back"), b -> close())
+			.dimensions(cardX + cardW - 76, cardY + cardH - 28, 66, 20).build());
 
 		// Interactive Feature Toggles (Tab 1)
-		int togY = btnY + 36;
+		int togY = cardY + 222;
 		int colW = (cardW - 30) / 2;
 
-		M3Config cfg = M3FrametimeMod.config();
-
-		toggles.add(new ToggleWidget(cardX + 10, togY, colW, 20, "ARM64 FastMath Suite", () -> cfg.useFastMath, v -> {
-			cfg.useFastMath = v;
-			cfg.save();
-		}));
-		toggles.add(new ToggleWidget(cardX + 20 + colW, togY, colW, 20, "Frustum Bounding-Sphere Fast-Reject", () -> true, v -> {}));
-
-		toggles.add(new ToggleWidget(cardX + 10, togY + 24, colW, 20, "GlStateManager Driver Deduplicator", () -> true, v -> {}));
-		toggles.add(new ToggleWidget(cardX + 20 + colW, togY + 24, colW, 20, "Iris & Shader Shadow Culling", () -> cfg.optimizeShadowPass, v -> {
-			cfg.optimizeShadowPass = v;
-			cfg.save();
+		toggles.add(new ToggleWidget(cardX + 10, togY, colW, 20, "Mod FastMath Helpers", () -> M3FrametimeMod.config().useFastMath, v -> {
+			M3Config current = M3FrametimeMod.config();
+			current.useFastMath = v;
+			current.save();
 		}));
 
-		toggles.add(new ToggleWidget(cardX + 10, togY + 48, colW, 20, "Mach Kernel P-Core Real-time Lock", () -> cfg.boostDarwinQos, v -> {
-			cfg.boostDarwinQos = v;
-			cfg.save();
-		}));
-		toggles.add(new ToggleWidget(cardX + 20 + colW, togY + 48, colW, 20, "Sodium SWAP & P-Core Worker Feeder", () -> cfg.boostSodiumChunkBuilderThreads, v -> {
-			cfg.boostSodiumChunkBuilderThreads = v;
-			cfg.save();
+		toggles.add(new ToggleWidget(cardX + 10, togY + 24, colW, 20, "Shader-safe FastMath helpers", () -> M3FrametimeMod.config().useFastMath, v -> {
+			M3Config current = M3FrametimeMod.config();
+			current.useFastMath = v;
+			current.save();
 		}));
 
-		toggles.add(new ToggleWidget(cardX + 10, togY + 72, colW, 20, "F8 Glassmorphic Live Telemetry HUD", () -> cfg.overlayEnabled, v -> {
-			cfg.overlayEnabled = v;
-			cfg.save();
+		toggles.add(new ToggleWidget(cardX + 10, togY + 48, colW, 20, "Mach QoS Render Priority Request", () -> M3FrametimeMod.config().boostDarwinQos, v -> {
+			M3Config current = M3FrametimeMod.config();
+			current.boostDarwinQos = v;
+			current.save();
 		}));
-		toggles.add(new ToggleWidget(cardX + 20 + colW, togY + 72, colW, 20, "Far Positional Sound Culling", () -> cfg.farSoundSkip, v -> {
-			cfg.farSoundSkip = v;
-			cfg.save();
+		toggles.add(new ToggleWidget(cardX + 20 + colW, togY + 48, colW, 20, "Sodium Chunk Worker Count", () -> M3FrametimeMod.config().boostSodiumChunkBuilderThreads, v -> {
+			M3Config current = M3FrametimeMod.config();
+			current.boostSodiumChunkBuilderThreads = v;
+			current.save();
 		}));
+
+		toggles.add(new ToggleWidget(cardX + 10, togY + 72, colW, 20, "F8 Live Telemetry HUD", () -> M3FrametimeMod.config().overlayEnabled, v -> {
+			M3Config current = M3FrametimeMod.config();
+			current.overlayEnabled = v;
+			current.save();
+		}));
+		toggles.add(new ToggleWidget(cardX + 20 + colW, togY + 72, colW, 20, "Far Positional Sound Culling", () -> M3FrametimeMod.config().farSoundSkip, v -> {
+			M3Config current = M3FrametimeMod.config();
+			current.farSoundSkip = v;
+			current.save();
+		}));
+
+		toggles.add(new ToggleWidget(cardX + 10, togY + 96, colW, 20, "Diagnostics recorder", () -> M3FrametimeMod.config().performanceRecorderEnabled, v -> {
+			M3Config current = M3FrametimeMod.config();
+			current.performanceRecorderEnabled = v;
+			current.save();
+		}));
+		toggles.add(new ToggleWidget(cardX + 20 + colW, togY + 96, colW, 20, "Frame pacing ownership (off = Minecraft/Iris)", () -> M3FrametimeMod.config().pacingEnabled, v -> {
+			M3Config current = M3FrametimeMod.config();
+			current.pacingEnabled = v;
+			current.save();
+		}));
+	}
+
+	private void applyProfile(String profile) {
+		observeProfileChange();
+		if (profile.equalsIgnoreCase(activeProfile())) {
+			return;
+		}
+		if (profile.equals(pendingProfile)) {
+			M3Config cfg = M3FrametimeMod.config();
+			cfg.performanceProfile = profile;
+			cfg.applyProfile();
+			cfg.save();
+			pendingProfile = null;
+		} else {
+			pendingProfile = profile;
+		}
 	}
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+		ensureWidgetsInitialized();
+		calculateLayout();
+		observeProfileChange();
 		context.fillGradient(0, 0, this.width, this.height, 0xD00A0E17, 0xF005080E);
 
-		int cardW = Math.min(680, this.width - 40);
-		int cardH = Math.min(390, this.height - 50);
-		int cardX = (this.width - cardW) / 2;
-		int cardY = 22;
+		int cardW = this.cardW;
+		int cardH = this.cardH;
+		int cardX = this.cardX;
+		int cardY = this.cardY;
 
 		// Main Glass Card Border & Fill
 		context.fill(cardX, cardY, cardX + cardW, cardY + cardH, 0xCC111827);
@@ -118,10 +220,10 @@ public final class SiliconDashboardScreen extends Screen {
 
 		// Header Title
 		String title = "⚡ SILICONFLOW MASTER CONTROL CENTER";
-		context.drawText(tr, title, cardX + 14, cardY + 12, 0x00F2FE, true);
+		context.drawText(tr, title, cardX + 14, cardY + 12, 0xFF00F2FE, true);
 
-		String versionInfo = "v1.0.35 · MC " + VersionDetector.get().getRawVersion() + " · " + SiliconCpuTopology.get().getChipName();
-		context.drawText(tr, versionInfo, cardX + cardW - tr.getWidth(versionInfo) - 14, cardY + 12, 0x94A3B8, false);
+		String versionInfo = "MC " + VersionDetector.get().getRawVersion() + " · " + SiliconCpuTopology.get().getChipName();
+		context.drawText(tr, versionInfo, cardX + cardW - tr.getWidth(versionInfo) - 14, cardY + 12, 0xFF94A3B8, false);
 
 		// Navigation Tabs Strip
 		int tabY = cardY + 26;
@@ -138,7 +240,12 @@ public final class SiliconDashboardScreen extends Screen {
 			context.drawBorder(tx, tabY, tabW - 4, 18, active ? 0xFF38BDF8 : 0x33334155);
 
 			int strX = tx + (tabW - 4 - tr.getWidth(t.title)) / 2;
-			context.drawText(tr, t.title, strX, tabY + 5, active ? 0xFFFFFF : (hovered ? 0xF1F5F9 : 0x94A3B8), active);
+			context.drawText(tr, t.title, strX, tabY + 5, active ? 0xFFFFFFFF : (hovered ? 0xFFF1F5F9 : 0xFF94A3B8), active);
+		}
+
+		// Vanilla controls remain real children, but only profile controls are visible on this tab.
+		for (ButtonWidget control : vanillaControls) {
+			control.visible = currentTab == Tab.PROFILES;
 		}
 
 		// Render Tab Contents
@@ -153,25 +260,50 @@ public final class SiliconDashboardScreen extends Screen {
 	}
 
 	private void renderProfilesTab(DrawContext ctx, TextRenderer tr, int cardX, int cardY, int cardW, int mx, int my) {
-		// Section: 1-Click Tuning Profiles
-		ctx.drawText(tr, "🎯 PERFORMANCE PROFILES", cardX + 12, cardY + 54, 0xE2E8F0, true);
+		M3Config cfg = liveConfig();
+		String active = activeProfile();
+		ctx.drawText(tr, "PERFORMANCE PROFILES", cardX + 12, cardY + 54, 0xFFE2E8F0, true);
+		ctx.drawText(tr, "Choose a preset for mod-owned optimizations. Minecraft video and shader options stay yours.", cardX + 12, cardY + 66, 0xFF94A3B8, false);
 		for (ProfileButton pb : profileButtons) {
 			pb.render(ctx, tr, mx, my);
 		}
 
-		// Section: Engine Feature Switches
-		ctx.drawText(tr, "⚙️ ENGINE ARCHITECTURE & HARDWARE SWITCHES", cardX + 12, cardY + 115, 0xE2E8F0, true);
+		// Visible runtime status panel: values come directly from the live config and session memory.
+		int statusX = cardX + Math.max(300, cardW / 2);
+		int statusY = cardY + 104;
+		int statusW = cardX + cardW - 12 - statusX;
+		ctx.fill(statusX, statusY, statusX + statusW, statusY + 106, 0x5530364A);
+		ctx.drawBorder(statusX, statusY, statusW, 106, 0xFF38BDF8);
+		ctx.drawText(tr, "PROFILE STATUS", statusX + 8, statusY + 8, 0xFF38BDF8, true);
+		ctx.drawText(tr, "ACTIVE PROFILE: " + active, statusX + 8, statusY + 25, 0xFFFFFFFF, true);
+		ctx.drawText(tr, "PREVIOUS PROFILE: " + (previousProfile == null ? "none in this session" : previousProfile), statusX + 8, statusY + 43, 0xFFCBD5E1, false);
+		ctx.drawText(tr, "LAST PROFILE CHANGE: " + lastProfileChangeText(), statusX + 8, statusY + 61, 0xFFCBD5E1, false);
+		ctx.drawText(tr, "Config is live; history is memory-only.", statusX + 8, statusY + 82, 0xFF94A3B8, false);
+
+		ctx.drawText(tr, "PROFILE DESCRIPTIONS", cardX + 12, cardY + 108, 0xFFE2E8F0, true);
+		ctx.drawText(tr, "PLAYABLE: visual-first, safe culling, smooth play.", cardX + 12, cardY + 122, 0xFFCBD5E1, false);
+		ctx.drawText(tr, "MAX: strongest trimming for maximum headroom.", cardX + 12, cardY + 136, 0xFFCBD5E1, false);
+		ctx.drawText(tr, "BALANCED: moderate culling, more ambience.", cardX + 12, cardY + 150, 0xFFCBD5E1, false);
+		ctx.drawText(tr, "TELEMETRY: measurement only; no visual trimming.", cardX + 12, cardY + 164, 0xFFCBD5E1, false);
+
+		String profileHelp = pendingProfile == null
+			? "Two-click confirmation: click a different preset once, then click it again to apply."
+			: "PENDING PROFILE: " + pendingProfile + " — click the same preset again to apply.";
+		ctx.drawText(tr, profileHelp, cardX + 12, cardY + 184, pendingProfile == null ? 0xFF94A3B8 : 0xFFFBBF24, false);
+
+		ctx.drawText(tr, "DIAGNOSTICS & SETTINGS", cardX + 12, cardY + 204, 0xFFE2E8F0, true);
 		for (ToggleWidget tw : toggles) {
 			tw.render(ctx, tr, mx, my);
 		}
 
-		// Quick Sensor Footer
-		int footerY = cardY + 276;
+		int footerY = cardY + cardH - 48;
 		int liveFps = DebugHud.get().getLiveFps();
 		double liveFt = DebugHud.get().getLiveFrametimeMs();
-		String footer = String.format("● Silicon Engine Active | Live FPS: §f%d FPS§r | Frametime: §f%.2f ms§r | P-Core Lock: §aACTIVE§r", liveFps, liveFt);
+		String qos = cfg.boostDarwinQos ? "REQUESTED" : "OFF";
+		String footer = String.format("Telemetry | Live FPS: %d | Frametime: %.2f ms | Render QoS: %s", liveFps, liveFt, qos);
 		ctx.fill(cardX + 10, footerY, cardX + cardW - 10, footerY + 20, 0x33059669);
-		ctx.drawText(tr, footer, cardX + 18, footerY + 6, 0x34D399, false);
+		ctx.drawText(tr, footer, cardX + 18, footerY + 6, 0xFF34D399, false);
+		ctx.drawText(tr, "Profile changes save safely to the existing config file; no history is claimed across restarts.", cardX + 12, footerY + 25, 0xFF94A3B8, false);
 	}
 
 	private void renderTopologyTab(DrawContext ctx, TextRenderer tr, int cardX, int cardY, int cardW, int mx, int my) {
@@ -179,53 +311,58 @@ public final class SiliconDashboardScreen extends Screen {
 		int pCores = topo.getEstimatedPCores();
 		int eCores = topo.getEstimatedECores();
 
-		ctx.drawText(tr, "🍎 APPLE SILICON UNIFIED CORE TOPOLOGY", cardX + 12, cardY + 54, 0x38BDF8, true);
+		ctx.drawText(tr, "APPLE SILICON OPTIMIZATION", cardX + 12, cardY + 54, 0xFF38BDF8, true);
+		ctx.drawText(tr, "Hardware facts are read-only; macOS retains scheduling and unified-memory authority.", cardX + 12, cardY + 68, 0xFF94A3B8, false);
 
-		int boxY = cardY + 70;
+		int boxY = cardY + 84;
 		ctx.fill(cardX + 10, boxY, cardX + cardW - 10, boxY + 80, 0x440F172A);
 		ctx.drawBorder(cardX + 10, boxY, cardW - 20, 80, 0x3338BDF8);
 
-		ctx.drawText(tr, "⚡ Performance P-Cores: §f" + pCores + " Cores @ 4.05 GHz§r (Mach Affinity Tag 1)", cardX + 20, boxY + 12, 0x00F2FE, false);
-		ctx.drawText(tr, "  ↳ Role: Render Thread & Draw Loop (USER_INTERACTIVE 0x21 - Zero Preemption)", cardX + 20, boxY + 26, 0x94A3B8, false);
+		ctx.drawText(tr, "⚡ Chip: §f" + topo.getChipName() + "§r (" + topo.getChipTier() + ") · " + "M" + topo.getChipGeneration() + " · GPU: §f" + topo.getGpuCoreCount() + " Cores§r", cardX + 20, boxY + 12, 0xFF00F2FE, false);
+		ctx.drawText(tr, pCores > 0 && eCores > 0 ? "  ↳ P/E-core counts: unavailable (macOS scheduling owns placement)" : "  ↳ P/E-core topology: unavailable from safe JVM probes", cardX + 20, boxY + 26, 0xFF94A3B8, false);
 
-		ctx.drawText(tr, "🔋 Efficiency E-Cores: §f" + eCores + " Cores @ 2.75 GHz§r (Background QoS)", cardX + 20, boxY + 44, 0x4ADE80, false);
-		ctx.drawText(tr, "  ↳ Role: Sound System & Async Flight Stream (Offloaded from Render Thread)", cardX + 20, boxY + 58, 0x94A3B8, false);
+		ctx.drawText(tr, "  ↳ QoS request: " + (M3FrametimeMod.config().boostDarwinQos ? "enabled" : "disabled") + " (best-effort hint; no core-placement guarantee)", cardX + 20, boxY + 44, 0xFF4ADE80, false);
+		ctx.drawText(tr, "  ↳ GPU utilization: unavailable from the current graphics API", cardX + 20, boxY + 58, 0xFF94A3B8, false);
 
 		// RAM Allocation
 		int ramY = boxY + 90;
 		ctx.fill(cardX + 10, ramY, cardX + cardW - 10, ramY + 60, 0x440F172A);
 		ctx.drawBorder(cardX + 10, ramY, cardW - 20, 60, 0x3338BDF8);
 
-		long maxMb = Runtime.getRuntime().maxMemory() / (1024 * 1024);
-		long usedMb = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
-		ctx.drawText(tr, "🧠 Unified Memory (UMA): §f" + usedMb + " MB / " + maxMb + " MB§r (Direct SWAP Mapping)", cardX + 20, ramY + 14, 0xFBBF24, false);
-		ctx.drawText(tr, "  ↳ Garbage Collection Stress: §a0.00% (Sub-millisecond Non-blocking)§r", cardX + 20, ramY + 32, 0xCBD5E1, false);
+		MemoryPressureProbe memory = MemoryPressureProbe.get();
+		long maxMb = memory.heapMaxMb();
+		long usedMb = memory.heapUsedMb();
+		String heap = usedMb >= 0 && maxMb > 0 ? usedMb + " / " + maxMb + " MB" : "unavailable";
+		ctx.drawText(tr, "🧠 JVM heap: §f" + heap + "§r · physical free: §f" + memory.freePhysicalMb() + " MB§r", cardX + 20, ramY + 14, 0xFFFBBF24, false);
+		ctx.drawText(tr, "  ↳ GC pause: §f" + GcProbe.get().frameGcDeltaMs() + " ms§r | policy: §f" + (dev.doncalvin.m3frametime.telemetry.RamDiscipline.get().pressureMode() ? "MOD-OWNED TRIM" : "NORMAL") + "§r", cardX + 20, ramY + 32, 0xFFCBD5E1, false);
+		ctx.drawText(tr, "  ↳ UMA/VRAM split: §funavailable§r (macOS unified memory; no VRAM measurement)", cardX + 20, ramY + 48, 0xFF94A3B8, false);
 	}
 
 	private void renderBenchmarkTab(DrawContext ctx, TextRenderer tr, int cardX, int cardY, int cardW, int mx, int my) {
 		SiliconBenchmark bench = SiliconBenchmark.get();
 
-		ctx.drawText(tr, "🏎️ IN-GAME HARDWARE BENCHMARK & PERFORMANCE INDEX", cardX + 12, cardY + 54, 0xF59E0B, true);
+		ctx.drawText(tr, "BENCHMARK", cardX + 12, cardY + 54, 0xFFF59E0B, true);
+		ctx.drawText(tr, "Optional local measurement of ARM64 math and memory throughput; not an FPS guarantee.", cardX + 12, cardY + 68, 0xFF94A3B8, false);
 
-		int boxY = cardY + 70;
+		int boxY = cardY + 84;
 		ctx.fill(cardX + 10, boxY, cardX + cardW - 10, boxY + 120, 0x440F172A);
 		ctx.drawBorder(cardX + 10, boxY, cardW - 20, 120, 0x33F59E0B);
 
 		if (bench.isRunning()) {
-			ctx.drawText(tr, "⏳ Benchmark Running... (" + (int) (bench.getProgress() * 100) + "%)", cardX + 20, boxY + 16, 0xFBBF24, true);
+			ctx.drawText(tr, "⏳ Benchmark Running... (" + (int) (bench.getProgress() * 100) + "%)", cardX + 20, boxY + 16, 0xFFFBBF24, true);
 			int barW = cardW - 60;
 			ctx.fill(cardX + 20, boxY + 36, cardX + 20 + barW, boxY + 48, 0x661E293B);
 			ctx.fill(cardX + 20, boxY + 36, cardX + 20 + (int) (barW * bench.getProgress()), boxY + 48, 0xFF00F2FE);
 		} else {
-			ctx.drawText(tr, "SiliconFlow Performance Index (SPI): §f" + String.format("%.1f", bench.getPerformanceIndex()) + " / 100§r", cardX + 20, boxY + 16, 0x00F2FE, true);
-			ctx.drawText(tr, "Rating: §a" + bench.getResultRating() + "§r", cardX + 20, boxY + 34, 0x4ADE80, false);
+			ctx.drawText(tr, "SiliconFlow Performance Index (SPI): §f" + String.format("%.1f", bench.getPerformanceIndex()) + " / 100§r", cardX + 20, boxY + 16, 0xFF00F2FE, true);
+			ctx.drawText(tr, "Rating: §a" + bench.getResultRating() + "§r", cardX + 20, boxY + 34, 0xFF4ADE80, false);
 
 			String mathStr = bench.getFastMathOpsPerSec() > 0 ? String.format("%,d ops/sec", bench.getFastMathOpsPerSec()) : "--";
 			String memStr = bench.getMemoryBandwidthGbSec() > 0 ? String.format("%.2f GB/s", bench.getMemoryBandwidthGbSec()) : "--";
 
-			ctx.drawText(tr, "• ARM64 FastMath Throughput: §f" + mathStr + "§r", cardX + 20, boxY + 54, 0xCBD5E1, false);
-			ctx.drawText(tr, "• Memory Cache Transfer Bandwidth: §f" + memStr + "§r", cardX + 20, boxY + 70, 0xCBD5E1, false);
-			ctx.drawText(tr, "• Real-Time Render Pacing: §f0.00 ms Jitter Index§r", cardX + 20, boxY + 86, 0xCBD5E1, false);
+			ctx.drawText(tr, "• ARM64 FastMath Throughput: §f" + mathStr + "§r", cardX + 20, boxY + 54, 0xFFCBD5E1, false);
+			ctx.drawText(tr, "• Memory Cache Transfer Bandwidth: §f" + memStr + "§r", cardX + 20, boxY + 70, 0xFFCBD5E1, false);
+			ctx.drawText(tr, "• Render pacing: §funavailable§r (no synthetic score)", cardX + 20, boxY + 86, 0xFFCBD5E1, false);
 		}
 
 		// Benchmark Button
@@ -240,35 +377,38 @@ public final class SiliconDashboardScreen extends Screen {
 
 		String btnText = bench.isRunning() ? "Benchmarking..." : "▶ Start Hardware Benchmark";
 		int tx = btnX + (btnW - tr.getWidth(btnText)) / 2;
-		ctx.drawText(tr, btnText, tx, btnY + 9, 0xFFFFFF, true);
+		ctx.drawText(tr, btnText, tx, btnY + 9, 0xFFFFFFFF, true);
 	}
 
 	private void renderDiagnosticsTab(DrawContext ctx, TextRenderer tr, int cardX, int cardY, int cardW, int mx, int my) {
 		SpikeMonitor sm = SpikeMonitor.get();
 		StutterErrorCode lastErr = sm.lastErrorCode();
 
-		ctx.drawText(tr, "🛰️ STUTTER FLIGHT RECORDER & SYSTEM ANALYZER", cardX + 12, cardY + 54, 0xA855F7, true);
+		ctx.drawText(tr, "DIAGNOSTICS & SETTINGS", cardX + 12, cardY + 54, 0xFFA855F7, true);
+		ctx.drawText(tr, "Telemetry is opt-in and local. Changes save immediately; some Minecraft options may need a restart.", cardX + 12, cardY + 68, 0xFF94A3B8, false);
 
-		int boxY = cardY + 70;
+		int boxY = cardY + 84;
 		ctx.fill(cardX + 10, boxY, cardX + cardW - 10, boxY + 150, 0x440F172A);
 		ctx.drawBorder(cardX + 10, boxY, cardW - 20, 150, 0x33A855F7);
 
-		ctx.drawText(tr, "Diagnostic Matrix: §f236 Error Codes Active§r", cardX + 20, boxY + 14, 0xC084FC, true);
-		ctx.drawText(tr, "Total Frame Spikes Detected: §f" + sm.spikeCount() + "§r", cardX + 20, boxY + 32, 0xCBD5E1, false);
+		ctx.drawText(tr, "Diagnostic catalog: §f" + StutterErrorCode.totalCount() + " definitions§r", cardX + 20, boxY + 14, 0xFFC084FC, true);
+		ctx.drawText(tr, "Total Frame Spikes Detected: §f" + sm.spikeCount() + "§r", cardX + 20, boxY + 32, 0xFFCBD5E1, false);
 
-		ctx.drawText(tr, "Last Error Code: §e[" + lastErr.getCode() + "] " + lastErr.getTitle() + "§r", cardX + 20, boxY + 52, 0xFBBF24, false);
-		ctx.drawText(tr, "Description: §7" + lastErr.getDescription() + "§r", cardX + 20, boxY + 68, 0x94A3B8, false);
+		ctx.drawText(tr, "Last Error Code: §e[" + lastErr.getCode() + "] " + lastErr.getTitle() + "§r", cardX + 20, boxY + 52, 0xFFFBBF24, false);
+		ctx.drawText(tr, "Description: §7" + lastErr.getDescription() + "§r", cardX + 20, boxY + 68, 0xFF94A3B8, false);
 
-		ctx.drawText(tr, "SiliconFlow Auto-Mitigation: §aApplied (P-Core Lock & Dynamic Frustum Culling)§r", cardX + 20, boxY + 90, 0x4ADE80, false);
-		ctx.drawText(tr, "Status: §fPristine 0-Overhead Execution§r", cardX + 20, boxY + 110, 0x38BDF8, false);
+		ctx.drawText(tr, "Runtime quality changes: §fdisabled§r (profile settings remain user-controlled)", cardX + 20, boxY + 90, 0xFF4ADE80, false);
+		ctx.drawText(tr, "Status: §fmeasured telemetry only§r", cardX + 20, boxY + 110, 0xFF38BDF8, false);
 	}
 
 	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+		ensureWidgetsInitialized();
+		calculateLayout();
 		if (button == 0) {
-			int cardW = Math.min(680, this.width - 40);
-			int cardX = (this.width - cardW) / 2;
-			int cardY = 22;
+			int cardW = this.cardW;
+			int cardX = this.cardX;
+			int cardY = this.cardY;
 			int tabY = cardY + 26;
 			int tabW = (cardW - 20) / 4;
 			Tab[] allTabs = Tab.values();
@@ -280,23 +420,8 @@ public final class SiliconDashboardScreen extends Screen {
 				}
 			}
 
-			if (currentTab == Tab.PROFILES) {
-				for (ProfileButton pb : profileButtons) {
-					if (pb.mouseClicked(mouseX, mouseY)) {
-						M3Config cfg = M3FrametimeMod.config();
-						cfg.performanceProfile = pb.profileName;
-						cfg.applyProfile();
-						cfg.save();
-						return true;
-					}
-				}
-				for (ToggleWidget tw : toggles) {
-					if (tw.mouseClicked(mouseX, mouseY)) {
-						return true;
-					}
-				}
-			} else if (currentTab == Tab.BENCHMARK) {
-				int boxY = cardY + 70;
+			if (currentTab == Tab.BENCHMARK) {
+				int boxY = cardY + 84;
 				int btnW = 220;
 				int btnH = 26;
 				int btnX = cardX + (cardW - btnW) / 2;
@@ -353,7 +478,7 @@ public final class SiliconDashboardScreen extends Screen {
 			ctx.fill(x, y, x + w, y + h, bg);
 			ctx.drawBorder(x, y, w, h, border);
 
-			int textColor = active ? 0xFFFFFF : (hovered ? 0xF1F5F9 : 0x94A3B8);
+			int textColor = active ? 0xFFFFFFFF : (hovered ? 0xFFF1F5F9 : 0xFF94A3B8);
 			int tx = x + (w - tr.getWidth(label)) / 2;
 			int ty = y + (h - 8) / 2;
 			ctx.drawText(tr, label, tx, ty, textColor, active);
@@ -396,7 +521,7 @@ public final class SiliconDashboardScreen extends Screen {
 			int knobX = state ? (switchX + switchW - 12) : (switchX + 2);
 			ctx.fill(knobX, switchY + 2, knobX + 10, switchY + switchH - 2, 0xFFFFFFFF);
 
-			ctx.drawText(tr, label, x + 6, y + (h - 8) / 2, state ? 0xF8FAFC : 0x94A3B8, false);
+			ctx.drawText(tr, label, x + 6, y + (h - 8) / 2, state ? 0xFFF8FAFC : 0xFF94A3B8, false);
 		}
 
 		boolean mouseClicked(double mx, double my) {
