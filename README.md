@@ -39,6 +39,8 @@
 
 <p align="center"><em>Genuine Minecraft capture from the project. The optional F8 overlay is diagnostic context, not a benchmark result; labels may differ between builds.</em></p>
 
+<p align="center"><sub>Visuals use restrained SVG motion where it explains signal flow. Reduced-motion settings automatically show the same clean static diagrams.</sub></p>
+
 ## The short version
 
 <div align="center">
@@ -81,7 +83,7 @@ The memory policy samples JVM heap occupancy and macOS-reported physical free me
   <img src="docs/assets/performance-model.svg" alt="Diagram showing Apple-Silicon optimization across shared memory, rendering, scheduling, and optional diagnostics" width="100%">
 </p>
 
-*Technical model, not a performance chart. It shows why frame-time work must consider the whole client and operating system rather than FPS alone.*
+*Technical model, not a performance chart. The gentle layer emphasis and moving connectors show that frame-time behavior is a system interaction; with reduced motion enabled, the same model remains fully visible and static.*
 
 ## Performance pillars
 
@@ -129,7 +131,7 @@ SiliconFlow is designed to complement specialized mods instead of replacing thei
   <img src="docs/assets/architecture.svg" alt="Schematic showing Minecraft client workload flowing through SiliconFlow optimization policies to optional diagnostics and performance controls, with macOS retaining scheduling authority" width="100%">
 </p>
 
-*Data flow and ownership schematic. It is not a measured performance chart.*
+*Data flow and ownership schematic. The restrained moving connectors indicate policy direction, not throughput or a measured performance chart; reduced-motion settings leave the arrows static.*
 
 ## Optional developer and troubleshooting tools
 
@@ -209,7 +211,7 @@ Benchmarking is optional and exists to help developers and users troubleshoot or
   <img src="docs/assets/benchmark-loop.svg" alt="Optional five-step optimization check: record conditions, match workloads, warm up, repeat runs, and report distributions" width="100%">
 </p>
 
-*Benchmark discipline at a glance. The loop describes method, not an expected result.*
+*Benchmark discipline at a glance. The subtle loop motion reinforces sequence and repeatability, not speed; reduced-motion settings show the complete static loop.*
 
 1. **Record conditions.** Mac model and M-chip generation, RAM, macOS version, Java vendor and architecture, Minecraft/Fabric versions, mod versions, shader state, refresh rate, render/simulation distance, and JVM arguments.
 2. **Match the workload.** Create profiles that differ only by SiliconFlow being present or absent. Keep Sodium, Iris, shader pack, resource pack, world, seed, camera route, settings, and background applications identical. If optional mods are tested, keep the same set in both runs.
