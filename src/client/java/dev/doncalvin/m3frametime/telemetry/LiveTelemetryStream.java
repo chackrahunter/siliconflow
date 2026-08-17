@@ -74,7 +74,6 @@ public final class LiveTelemetryStream {
 
 		boolean shaderActive = snapshot.timestampNanos() > 0L ? snapshot.shaderActive() : StackCompat.isShaderActive();
 		boolean shadowPass = StackCompat.isShadowPass();
-		boolean darwinQos = M3FrametimeMod.config().boostDarwinQos;
 
 		try {
 			AdaptiveWorkerPool.get().execute(() -> {
@@ -129,7 +128,7 @@ public final class LiveTelemetryStream {
 				JsonObject gfx = new JsonObject();
 				gfx.addProperty("shaderActive", shaderActive);
 				gfx.addProperty("shadowPassActive", shadowPass);
-				gfx.addProperty("darwinQosPcoreLocked", darwinQos);
+				gfx.addProperty("darwinQosPcoreLocked", "unavailable");
 				gfx.addProperty("shaderStateSource", snapshot.timestampNanos() > 0L ? "iris-api-sample" : "iris-api-fallback");
 				json.add("graphics", gfx);
 

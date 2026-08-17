@@ -43,7 +43,6 @@ public final class SiliconDashboardScreen extends Screen {
 	private Tab currentTab = Tab.PROFILES;
 
 	private final List<ToggleWidget> toggles = new ArrayList<>();
-	private final List<ProfileButton> profileButtons = new ArrayList<>();
 	private final List<ButtonWidget> vanillaControls = new ArrayList<>();
 	private ButtonWidget backButton;
 	private String pendingProfile;
@@ -63,7 +62,7 @@ public final class SiliconDashboardScreen extends Screen {
 	}
 
 	private void ensureWidgetsInitialized() {
-		if (this.profileButtons.isEmpty() || this.toggles.isEmpty() || this.vanillaControls.isEmpty()) {
+		if (this.toggles.isEmpty() || this.vanillaControls.isEmpty()) {
 			init();
 		}
 	}
@@ -107,7 +106,6 @@ public final class SiliconDashboardScreen extends Screen {
 	@Override
 	protected void init() {
 		this.toggles.clear();
-		this.profileButtons.clear();
 		this.vanillaControls.clear();
 		calculateLayout();
 
@@ -118,11 +116,6 @@ public final class SiliconDashboardScreen extends Screen {
 		// Vanilla ButtonWidgets are the actual profile controls; custom cards below provide status styling.
 		int btnW = (cardW - 30) / 4;
 		int btnY = cardY + 70;
-		profileButtons.add(new ProfileButton(cardX + 10, btnY, btnW, 24, "PLAYABLE", "★ Playable"));
-		profileButtons.add(new ProfileButton(cardX + 15 + btnW, btnY, btnW, 24, "MAX", "⚡ MAX"));
-		profileButtons.add(new ProfileButton(cardX + 20 + btnW * 2, btnY, btnW, 24, "BALANCED", "🔋 Balanced"));
-		profileButtons.add(new ProfileButton(cardX + 25 + btnW * 3, btnY, btnW, 24, "TELEMETRY", "📊 Diagnostics"));
-
 		addVanillaControl(ButtonWidget.builder(Text.literal("PLAYABLE"), b -> applyProfile("PLAYABLE"))
 			.dimensions(cardX + 10, btnY, btnW, 24).build());
 		addVanillaControl(ButtonWidget.builder(Text.literal("MAX"), b -> applyProfile("MAX"))
@@ -144,23 +137,6 @@ public final class SiliconDashboardScreen extends Screen {
 			current.save();
 		}));
 
-		toggles.add(new ToggleWidget(cardX + 10, togY + 24, colW, 20, "Shader-safe FastMath helpers", () -> M3FrametimeMod.config().useFastMath, v -> {
-			M3Config current = M3FrametimeMod.config();
-			current.useFastMath = v;
-			current.save();
-		}));
-
-		toggles.add(new ToggleWidget(cardX + 10, togY + 48, colW, 20, "Mach QoS Render Priority Request", () -> M3FrametimeMod.config().boostDarwinQos, v -> {
-			M3Config current = M3FrametimeMod.config();
-			current.boostDarwinQos = v;
-			current.save();
-		}));
-		toggles.add(new ToggleWidget(cardX + 20 + colW, togY + 48, colW, 20, "Sodium Chunk Worker Count", () -> M3FrametimeMod.config().boostSodiumChunkBuilderThreads, v -> {
-			M3Config current = M3FrametimeMod.config();
-			current.boostSodiumChunkBuilderThreads = v;
-			current.save();
-		}));
-
 		toggles.add(new ToggleWidget(cardX + 10, togY + 72, colW, 20, "F8 Live Telemetry HUD", () -> M3FrametimeMod.config().overlayEnabled, v -> {
 			M3Config current = M3FrametimeMod.config();
 			current.overlayEnabled = v;
@@ -175,11 +151,6 @@ public final class SiliconDashboardScreen extends Screen {
 		toggles.add(new ToggleWidget(cardX + 10, togY + 96, colW, 20, "Diagnostics recorder", () -> M3FrametimeMod.config().performanceRecorderEnabled, v -> {
 			M3Config current = M3FrametimeMod.config();
 			current.performanceRecorderEnabled = v;
-			current.save();
-		}));
-		toggles.add(new ToggleWidget(cardX + 20 + colW, togY + 96, colW, 20, "Frame pacing ownership (off = Minecraft/Iris)", () -> M3FrametimeMod.config().pacingEnabled, v -> {
-			M3Config current = M3FrametimeMod.config();
-			current.pacingEnabled = v;
 			current.save();
 		}));
 	}
@@ -264,10 +235,6 @@ public final class SiliconDashboardScreen extends Screen {
 		String active = activeProfile();
 		ctx.drawText(tr, "PERFORMANCE PROFILES", cardX + 12, cardY + 54, 0xFFE2E8F0, true);
 		ctx.drawText(tr, "Choose a preset for mod-owned optimizations. Minecraft video and shader options stay yours.", cardX + 12, cardY + 66, 0xFF94A3B8, false);
-		for (ProfileButton pb : profileButtons) {
-			pb.render(ctx, tr, mx, my);
-		}
-
 		// Visible runtime status panel: values come directly from the live config and session memory.
 		int statusX = cardX + Math.max(300, cardW / 2);
 		int statusY = cardY + 104;
@@ -299,8 +266,8 @@ public final class SiliconDashboardScreen extends Screen {
 		int footerY = cardY + cardH - 48;
 		int liveFps = DebugHud.get().getLiveFps();
 		double liveFt = DebugHud.get().getLiveFrametimeMs();
-		String qos = cfg.boostDarwinQos ? "REQUESTED" : "OFF";
-		String footer = String.format("Telemetry | Live FPS: %d | Frametime: %.2f ms | Render QoS: %s", liveFps, liveFt, qos);
+		String qos = "USER / MINECRAFT";
+		String footer = String.format("Telemetry | Live FPS: %d | Frametime: %.2f ms | Presentation: %s", liveFps, liveFt, qos);
 		ctx.fill(cardX + 10, footerY, cardX + cardW - 10, footerY + 20, 0x33059669);
 		ctx.drawText(tr, footer, cardX + 18, footerY + 6, 0xFF34D399, false);
 		ctx.drawText(tr, "Profile changes save safely to the existing config file; no history is claimed across restarts.", cardX + 12, footerY + 25, 0xFF94A3B8, false);
@@ -321,7 +288,7 @@ public final class SiliconDashboardScreen extends Screen {
 		ctx.drawText(tr, "⚡ Chip: §f" + topo.getChipName() + "§r (" + topo.getChipTier() + ") · " + "M" + topo.getChipGeneration() + " · GPU: §f" + topo.getGpuCoreCount() + " Cores§r", cardX + 20, boxY + 12, 0xFF00F2FE, false);
 		ctx.drawText(tr, pCores > 0 && eCores > 0 ? "  ↳ P/E-core counts: unavailable (macOS scheduling owns placement)" : "  ↳ P/E-core topology: unavailable from safe JVM probes", cardX + 20, boxY + 26, 0xFF94A3B8, false);
 
-		ctx.drawText(tr, "  ↳ QoS request: " + (M3FrametimeMod.config().boostDarwinQos ? "enabled" : "disabled") + " (best-effort hint; no core-placement guarantee)", cardX + 20, boxY + 44, 0xFF4ADE80, false);
+		ctx.drawText(tr, "  ↳ QoS request: " + ("user-owned") + " (scheduler-owned; SiliconFlow does not request QoS)", cardX + 20, boxY + 44, 0xFF4ADE80, false);
 		ctx.drawText(tr, "  ↳ GPU utilization: unavailable from the current graphics API", cardX + 20, boxY + 58, 0xFF94A3B8, false);
 
 		// RAM Allocation
@@ -406,6 +373,14 @@ public final class SiliconDashboardScreen extends Screen {
 		ensureWidgetsInitialized();
 		calculateLayout();
 		if (button == 0) {
+			if (currentTab == Tab.PROFILES) {
+				for (ToggleWidget toggle : toggles) {
+					if (toggle.mouseClicked(mouseX, mouseY)) {
+						return true;
+					}
+				}
+			}
+
 			int cardW = this.cardW;
 			int cardX = this.cardX;
 			int cardY = this.cardY;

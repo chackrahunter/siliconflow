@@ -2,9 +2,6 @@ package dev.doncalvin.m3frametime.mixin.client;
 
 import dev.doncalvin.m3frametime.M3FrametimeMod;
 import dev.doncalvin.m3frametime.client.ChipPower;
-import dev.doncalvin.m3frametime.client.ClientDistance;
-import dev.doncalvin.m3frametime.client.DarwinQos;
-import dev.doncalvin.m3frametime.config.FrameConfigCache;
 import dev.doncalvin.m3frametime.pacing.FramePacer;
 import dev.doncalvin.m3frametime.telemetry.GcProbe;
 import dev.doncalvin.m3frametime.telemetry.SpikeMonitor;
@@ -12,21 +9,15 @@ import dev.doncalvin.m3frametime.telemetry.PerformanceRecorder;
 import dev.doncalvin.m3frametime.telemetry.SpikeScope;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(MinecraftClient.class)
 public abstract class MinecraftClientMixin {
-	@Unique
-	private int m3frametime$prioTick;
-
 	@Inject(method = "render", at = @At("HEAD"), require = 1)
 	private void m3frametime$beginFrame(boolean tick, CallbackInfo ci) {
 		ChipPower.applyOnce();
-		ClientDistance.invalidate();
-		FrameConfigCache.get().refresh();
 		SpikeScope.get().resetFrame();
 		FramePacer.get().beginFrame();
 		FramePacer.get().updateEma(M3FrametimeMod.config().pacingEmaAlpha);

@@ -129,7 +129,6 @@ public final class SiliconBenchmark {
 			}
 		}, "SiliconFlow-Benchmark");
 
-		benchThread.setPriority(Thread.NORM_PRIORITY);
 		benchThread.setDaemon(true);
 		benchThread.start();
 	}

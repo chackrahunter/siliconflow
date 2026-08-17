@@ -154,7 +154,7 @@ public final class DebugHud {
 				memory.underPressure(),
 				memory.pressureAgeMs(),
 				memory.pressureThresholdMb(),
-				M3FrametimeMod.config().boostDarwinQos,
+				false,
 				spikeAge >= 0L && spikeAge < 5000L,
 				spikes.spikeCount(),
 				spikeAge,

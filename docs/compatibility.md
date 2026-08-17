@@ -15,7 +15,7 @@ The current Gradle project produces one version-specific Fabric artifact:
 
 ## Why runtime detection is not universal compatibility
 
-Fabric metadata is evaluated before the mod's runtime code can safely adapt. A 1.21.4-compiled class can reference a class, method descriptor, field, or mapping that is absent or changed in another release. A version detector cannot repair that linkage failure,; it does not make Java bytecode or Mixin callback signatures portable.
+Fabric metadata is evaluated before the mod's runtime code can safely adapt. A 1.21.4-compiled class can reference a class, method descriptor, field, or mapping that is absent or changed in another release. A version detector cannot repair that linkage failure; it does not make Java bytecode or Mixin callback signatures portable.
 
 `VersionDetector` is consequently limited to diagnostics and exact-target gating. It reports only whether the runtime matches this exact artifact target.
 
@@ -40,3 +40,9 @@ A launcher/installer may then select the artifact using the detected Minecraft v
 ```
 
 Do not deploy this artifact to a different Minecraft instance and treat a successful file copy as compatibility evidence.
+
+## SiliconFlow ownership boundary
+
+The implementation intentionally does not modify Minecraft video or distance settings, VSync/FPS caps, framebuffer scale, shader quality, Sodium allocator or worker settings, JVM arguments, macOS QoS/affinity, or macOS memory policy. Native ARM64 Java, Sodium `SWAP`, shader compatibility, Retina/framebuffer scale, display mode, and heap/collector choices remain user-controlled A/B-test variables. Iris shaders on ARM macOS remain an upstream unsupported/problematic boundary; SiliconFlow reports environment evidence without patching shader or driver behavior.
+
+SiliconFlow-owned behavior is limited to bounded local diagnostics, opt-in recorder/HUD output, immutable telemetry publication, atomic config persistence, and pressure-aware trimming of its own scratch state.

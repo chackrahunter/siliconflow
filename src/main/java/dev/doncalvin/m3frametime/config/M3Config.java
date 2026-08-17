@@ -48,21 +48,6 @@ public final class M3Config {
 	 * Defaults to -1 so Minecraft/Iris retain ownership of VSync and pacing.
 	 */
 	public int swapInterval = -1;
-	/** Raise Minecraft render-thread priority and native Darwin QoS so P-cores prioritize the game. */
-	public boolean boostRenderThreadPriority = false;
-	public boolean boostDarwinQos = false;
-
-	/**
-	 * Soft-boost Sodium chunk_builder_threads to an M-chip-friendly count (cores−1)
-	 * via reflection / sodium-options.json — no hard Sodium compile dependency.
-	 */
-	public boolean boostSodiumChunkBuilderThreads = false;
-	/**
-	 * Explicit Sodium worker count. 0 = auto (availableProcessors − 1).
-	 */
-	public int sodiumChunkBuilderThreads = 0;
-	/** Nudge Sodium "Chunk Render Task Executor" threads to NORM+1 and Darwin USER_INITIATED. */
-	public boolean boostSodiumWorkerPriority = false;
 
 	/** Compatibility switch retained for config migration; shadow-pass culling is never applied. */
 	public boolean optimizeShadowPass = false;
@@ -194,8 +179,6 @@ public final class M3Config {
 		String p = performanceProfile == null ? "PLAYABLE" : performanceProfile.trim().toUpperCase();
 		performanceProfile = p;
 		retinaGuard = false;
-		boostRenderThreadPriority = false;
-		boostDarwinQos = false;
 		useFastMath = true;
 		optimizeShadowPass = false;
 		spikeLogging = false;
@@ -204,10 +187,6 @@ public final class M3Config {
 		switch (p) {
 			case "TELEMETRY" -> {
 				swapInterval = -1;
-				boostRenderThreadPriority = false;
-				boostDarwinQos = false;
-				boostSodiumChunkBuilderThreads = false;
-				boostSodiumWorkerPriority = false;
 				entityCull = false;
 				overrideSodiumEntityCull = false;
 				particleCull = false;
@@ -253,10 +232,6 @@ public final class M3Config {
 			}
 			case "BALANCED" -> {
 				swapInterval = -1;
-				boostRenderThreadPriority = false;
-				boostDarwinQos = false;
-				boostSodiumChunkBuilderThreads = false;
-				boostSodiumWorkerPriority = false;
 				entityCull = true;
 				entityCullDistance = 96.0;
 				overrideSodiumEntityCull = false;
@@ -318,11 +293,6 @@ public final class M3Config {
 			case "MAX" -> {
 				performanceProfile = "MAX";
 				swapInterval = -1;
-				boostRenderThreadPriority = false;
-				boostDarwinQos = false;
-				boostSodiumChunkBuilderThreads = false;
-				sodiumChunkBuilderThreads = 0;
-				boostSodiumWorkerPriority = false;
 				entityCull = true;
 				entityCullDistance = 64.0;
 				overrideSodiumEntityCull = false;
@@ -385,11 +355,6 @@ public final class M3Config {
 				// PLAYABLE — default: looks pristine, RD 100% user-owned, ultra-optimized for 100+ FPS.
 				performanceProfile = "PLAYABLE";
 				swapInterval = -1;
-				boostRenderThreadPriority = false;
-				boostDarwinQos = false;
-				boostSodiumChunkBuilderThreads = false;
-				sodiumChunkBuilderThreads = 0;
-				boostSodiumWorkerPriority = false;
 				entityCull = true;
 				entityCullDistance = 80.0;
 				overrideSodiumEntityCull = false;
@@ -519,7 +484,6 @@ public final class M3Config {
 		if (cfg.spikeThresholdMs < 1L) {
 			cfg.spikeThresholdMs = 35L;
 		}
-		cfg.sodiumChunkBuilderThreads = Math.max(0, cfg.sodiumChunkBuilderThreads);
 		cfg.workerThreads = Math.max(0, cfg.workerThreads);
 		cfg.performanceRecorderWindow = Math.max(32, Math.min(2048, cfg.performanceRecorderWindow));
 		cfg.maxParticles = Math.max(0, cfg.maxParticles);

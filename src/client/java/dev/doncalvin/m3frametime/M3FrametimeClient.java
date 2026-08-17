@@ -1,10 +1,8 @@
 package dev.doncalvin.m3frametime;
 
 import dev.doncalvin.m3frametime.client.ChipPower;
-import dev.doncalvin.m3frametime.client.SodiumSoftBooster;
 import dev.doncalvin.m3frametime.config.M3Config;
 import dev.doncalvin.m3frametime.config.LiveConfigWatcher;
-import dev.doncalvin.m3frametime.display.GlfwSync;
 import dev.doncalvin.m3frametime.pacing.FramePacer;
 import dev.doncalvin.m3frametime.telemetry.DebugHud;
 import dev.doncalvin.m3frametime.telemetry.LiveTelemetryStream;
@@ -27,7 +25,6 @@ public final class M3FrametimeClient implements ClientModInitializer {
 	private static KeyBinding dashboardKey;
 	private static M3Config appliedGraphicsConfig;
 	private static String appliedGraphicsProfile;
-	private static int sodiumBoostRetryTicks;
 
 	@Override
 	public void onInitializeClient() {
@@ -35,9 +32,6 @@ public final class M3FrametimeClient implements ClientModInitializer {
 		MemoryPressureProbe.get().requestSample();
 		dev.doncalvin.m3frametime.engine.SiliconCpuTopology.get();
 		DebugHud.get().setEnabled(M3FrametimeMod.config().overlayEnabled);
-
-		// Soft-boost Sodium workers (3 builder threads on M3)
-		SodiumSoftBooster.applyIfNeeded();
 
 		overlayKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 			"key.m3-frametime.overlay",
@@ -80,38 +74,16 @@ public final class M3FrametimeClient implements ClientModInitializer {
 				appliedGraphicsProfile = currentProfile;
 			}
 
-			// Retry SoftBooster until Sodium options are live; then nudge worker priorities after world load.
-			if (!SodiumSoftBooster.applied() && sodiumBoostRetryTicks < 200) {
-				sodiumBoostRetryTicks++;
-				if ((sodiumBoostRetryTicks & 7) == 0) {
-					SodiumSoftBooster.applyIfNeeded();
-				}
-			}
-			if (client.world != null) {
-				ChipPower.tryBoostSodiumWorkers();
-			}
-			if (client.getWindow() != null) {
-				long handle = client.getWindow().getHandle();
-				FramePacer.get().setRefreshRateHz(GlfwSync.queryRefreshRate(handle));
-				GlfwSync.applyIfConfigured(handle);
-			}
 		});
 
 		// Render F8 Debug HUD directly via HudRenderCallback
 		HudRenderCallback.EVENT.register((context, tickCounter) -> DebugHud.get().render(context, tickCounter));
 
-		MinecraftClient client = MinecraftClient.getInstance();
-		if (client != null && client.getWindow() != null) {
-			long handle = client.getWindow().getHandle();
-			FramePacer.get().setRefreshRateHz(GlfwSync.queryRefreshRate(handle));
-			GlfwSync.applyIfConfigured(handle);
-		}
 
 		var cfg = M3FrametimeMod.config();
 		M3FrametimeMod.LOGGER.info(
-			"M3 Frametime {} ready | LiveTelemetry=ACTIVE | RuntimeTuner=DISABLED | DarwinQos={} (F8 overlay)",
-			cfg.performanceProfile,
-			cfg.boostDarwinQos
+			"M3 Frametime {} ready | LiveTelemetry=LOCAL_OPT_IN | external owners unchanged (F8 overlay)",
+			cfg.performanceProfile
 		);
 	}
 

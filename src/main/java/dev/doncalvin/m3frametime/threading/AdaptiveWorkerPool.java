@@ -26,14 +26,9 @@ public final class AdaptiveWorkerPool {
 	private AdaptiveWorkerPool(int threadCount) {
 		this.threadCount = threadCount;
 		AtomicInteger seq = new AtomicInteger();
-		String profile = M3FrametimeMod.config().performanceProfile;
-		boolean hotProfile = "MAX".equalsIgnoreCase(profile) || "PLAYABLE".equalsIgnoreCase(profile);
-		// Below Sodium workers (NORM/NORM+1) and render (MAX); still above absolute MIN.
-		int prio = hotProfile ? Thread.MIN_PRIORITY + 2 : Thread.MIN_PRIORITY + 1;
 		ThreadFactory factory = r -> {
 			Thread t = new Thread(r, "m3-frametime-worker-" + seq.getAndIncrement());
 			t.setDaemon(true);
-			t.setPriority(prio);
 			return t;
 		};
 		this.executor = new ThreadPoolExecutor(threadCount, threadCount, 0L, java.util.concurrent.TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(32), factory, new ThreadPoolExecutor.DiscardPolicy());

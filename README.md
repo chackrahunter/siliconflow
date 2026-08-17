@@ -176,6 +176,7 @@ Keep the file when troubleshooting. Reset it only when release notes or an imple
 | Boundaries with common performance mods | [`docs/sodium-lithium-gap-analysis.md`](docs/sodium-lithium-gap-analysis.md) |
 | Causes, evidence, and repeatable troubleshooting | [`docs/stutter-research.md`](docs/stutter-research.md) |
 | Version and integration policy | [`docs/compatibility.md`](docs/compatibility.md) |
+| Full Apple-Silicon performance handbook | [`docs/research/apple-silicon-performance-handbook.md`](docs/research/apple-silicon-performance-handbook.md) |
 
 ## Optional benchmark and troubleshooting methodology
 
