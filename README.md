@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/siliconflow-hero.svg" alt="SiliconFlow — Apple-Silicon performance for Minecraft" width="100%">
+<img src="docs/assets/siliconflow-hero.svg" alt="SiliconFlow — Apple-Silicon performance for Minecraft" width="100%" height="360">
 
 <p><strong>Apple-Silicon performance for Minecraft.</strong><br>
 <span>Frame-time discipline · memory-aware defaults · visual-workload control</span></p>
