@@ -1,9 +1,15 @@
 <div align="center">
 
-# SiliconFlow
+<img src="docs/assets/siliconflow-hero.svg" alt="SiliconFlow — Apple-Silicon performance for Minecraft" width="100%">
 
-### Apple-Silicon performance companion for Minecraft on M-chip Macs
+<p><strong>Apple-Silicon performance for Minecraft.</strong><br>
+<span>Frame-time discipline · memory-aware defaults · visual-workload control</span></p>
 
+<p>
+  <a href="#installation"><img src="https://img.shields.io/badge/↓%20Install-0B1220?style=for-the-badge&logo=apple&logoColor=white" alt="Jump to installation"></a>
+  <a href="#why-siliconflow-optimizes-apple-silicon"><img src="https://img.shields.io/badge/⌁%20How%20it%20works-123238?style=for-the-badge" alt="Jump to how it works"></a>
+  <a href="#optional-benchmark-and-troubleshooting-methodology"><img src="https://img.shields.io/badge/◎%20Method-282449?style=for-the-badge" alt="Jump to benchmark method"></a>
+</p>
 <p>
   <a href="https://github.com/chackrahunter/siliconflow"><img src="https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub repository"></a>
   <a href="https://github.com/chackrahunter/siliconflow/releases"><img src="https://img.shields.io/github/v/release/chackrahunter/siliconflow?display_name=tag&style=for-the-badge&label=Latest%20release&logo=github&logoColor=white" alt="Latest release"></a>
@@ -22,6 +28,8 @@
 
 </div>
 
+<p align="center"><sub>Built for the shared-memory reality of M-series Macs · Minecraft 1.21.4 · Fabric client</sub></p>
+
 > [!IMPORTANT]
 > **Beta software, exact target:** SiliconFlow currently builds one version-specific Fabric artifact for **Minecraft 1.21.4**. The dependency target is compile-verified; broader launch compatibility is not implied. It is not a universal JAR. Companion-mod integrations and optional troubleshooting tools are best-effort, and no setting guarantees a particular FPS, frame time, GPU result, or shader result.
 
@@ -31,7 +39,15 @@
 
 <p align="center"><em>Genuine Minecraft capture from the project. The optional F8 overlay is diagnostic context, not a benchmark result; labels may differ between builds.</em></p>
 
-## Start here
+## The short version
+
+<div align="center">
+
+| ◈ **Smoothness** | ◌ **Headroom** | ◇ **Control** |
+| :---: | :---: | :---: |
+| Frame-time discipline<br><sub>reduce avoidable variance</sub> | Memory-aware behavior<br><sub>respect unified memory</sub> | Visual workload controls<br><sub>choose the trade-off</sub> |
+
+</div>
 
 SiliconFlow is a high-performance boost and optimization mod for Fabric Minecraft on Apple-Silicon Macs with M-series chips. It focuses on practical client-side improvements: steadier frame pacing, conservative memory behavior, reduced rendering overhead, and configurable visual-workload controls. Profiles are bounded and user-owned so you can tune the balance between smoothness, image detail, and system headroom.
 
@@ -67,11 +83,18 @@ The memory policy samples JVM heap occupancy and macOS-reported physical free me
 
 *Technical model, not a performance chart. It shows why frame-time work must consider the whole client and operating system rather than FPS alone.*
 
-## Performance optimization features
+## Performance pillars
 
-- **Frame-time discipline** — bounded pacing and spike-aware behavior intended to reduce avoidable client-side variance.
-- **Memory discipline** — conservative defaults and pressure-aware signals for shared-memory Macs.
-- **Visual workload controls** — optional budgets or reductions for particles, distant entities and block entities, selected overlays, clouds and weather extras, glints, lightmap cadence, and related client work.
+<div align="center">
+
+| <img src="https://img.shields.io/badge/01-Frame--time%20discipline-13A9B6?style=for-the-badge" alt="Frame-time discipline"> | <img src="https://img.shields.io/badge/02-Memory%20discipline-7564C4?style=for-the-badge" alt="Memory discipline"> | <img src="https://img.shields.io/badge/03-Visual%20workload-D89B22?style=for-the-badge" alt="Visual workload"> |
+| :--- | :--- | :--- |
+| Bounded pacing and spike-aware behavior intended to reduce avoidable client-side variance. | Conservative defaults and pressure-aware signals for shared-memory Macs. | Optional budgets for particles, entities, overlays, clouds, weather, glints, and related client work. |
+
+</div>
+
+Additional boundaries keep the mod honest:
+
 - **Shader-aware boundaries** — optional reductions do not attempt to replace or patch a shader pipeline.
 - **Apple-Silicon-friendly requests** — best-effort Darwin QoS and thread-priority requests where supported; macOS retains scheduling authority.
 - **Optional developer tools** — an F8 overlay and bounded JSON recorder for troubleshooting and controlled comparisons; neither is required for normal gameplay.
