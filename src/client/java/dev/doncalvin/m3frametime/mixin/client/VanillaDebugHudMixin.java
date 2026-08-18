@@ -10,7 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.List;
 
 /**
- * Appends micro-stutter diagnostics to the vanilla F3 left panel.
+ * Appends last stutter code and heap vs physical UMA to vanilla F3.
+ * Intentionally not the F8 overlay strip.
  */
 @Mixin(DebugHud.class)
 public abstract class VanillaDebugHudMixin {

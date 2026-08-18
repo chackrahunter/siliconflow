@@ -97,20 +97,8 @@ public final class VersionDetector {
 		return rawVersion;
 	}
 
-	/** Exact Minecraft version compiled and tested by this artifact. */
-	public boolean isSupportedArtifactVersion() {
+	/** Whether runtime metadata matches the artifact target (Minecraft 1.21.4) exactly. */
+	public boolean isExactArtifactTarget() {
 		return major == 1 && minor == 21 && patch == 4 && "1.21.4".equals(rawVersion);
 	}
-
-	/** Whether runtime metadata matches the artifact target exactly. */
-	public boolean isExactArtifactTarget() {
-		return isSupportedArtifactVersion();
-	}
-
-	/** Exact target only; this artifact has no cross-release compatibility claim. */
-	public boolean isExactTargetOnly() {
-		return isExactArtifactTarget();
-	}
-
-
 }

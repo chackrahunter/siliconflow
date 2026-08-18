@@ -29,11 +29,25 @@ public final class GcProbe {
 	}
 
 	private void snapshotBaseline() {
-		lastCollectionTimeMs = 0L;
-		lastCollectionCount = 0L;
+		// Prime the baselines with the JVM's cumulative GC totals so the first async sample
+		// reports the delta since construction — not the entire since-launch GC time, which
+		// would otherwise mislabel the first micro-stutter as GC-001.
+		long time = 0L, count = 0L;
+		for (GarbageCollectorMXBean bean : beans) {
+			long t = bean.getCollectionTime(), c = bean.getCollectionCount();
+			if (t > 0) time += t;
+			if (c > 0) count += c;
+		}
+		lastCollectionTimeMs = time;
+		lastCollectionCount = count;
 	}
 
-	/** Schedules the MXBean query off the render thread. */
+	/**
+	 * Schedules the MXBean query off the render thread. Never blocks the caller.
+	 * {@link #frameGcDeltaMs()} is the last completed sample — typically the previous
+	 * frame — because MinecraftClientMixin invokes this at render RETURN and the worker
+	 * finishes asynchronously. Do not treat a 0 ms delta as "no GC this frame."
+	 */
 	public void sampleFrame() {
 		if (!sampling.compareAndSet(false, true)) return;
 		AdaptiveWorkerPool.get().execute(() -> {
@@ -51,15 +65,12 @@ public final class GcProbe {
 		});
 	}
 
+	/** Last completed async sample; usually one frame behind the spike being attributed. */
 	public long frameGcDeltaMs() {
 		return frameGcDeltaMs;
 	}
 
 	public long frameGcCountDelta() {
 		return frameGcCountDelta;
-	}
-
-	public boolean suggestsGcSpike(long thresholdMs) {
-		return frameGcDeltaMs >= Math.max(1, thresholdMs / 2) || frameGcCountDelta > 0 && frameGcDeltaMs > 0;
 	}
 }

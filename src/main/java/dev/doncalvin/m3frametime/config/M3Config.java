@@ -3,7 +3,7 @@ package dev.doncalvin.m3frametime.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.doncalvin.m3frametime.M3FrametimeMod;
-import dev.doncalvin.m3frametime.engine.ChipTier;
+import dev.doncalvin.m3frametime.engine.RamClassPolicy;
 import dev.doncalvin.m3frametime.engine.SiliconChipInfo;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -49,7 +49,7 @@ public final class M3Config {
 	 */
 	public int swapInterval = -1;
 
-	/** Compatibility switch retained for config migration; shadow-pass culling is never applied. */
+	/** When true, entity distance cull also applies during Iris shadow passes (SHADER/BALANCED set this). */
 	public boolean optimizeShadowPass = false;
 	public double shadowEntityDistance = 0.0;
 
@@ -146,6 +146,15 @@ public final class M3Config {
 	/** Client ticks between soft hints (~20 ticks/s). */
 	public int softCacheHintIntervalTicks = 40;
 
+	/** Session shader auto-throttle: overlay SiliconFlow budgets when Iris is active and frames/RAM stress. Not persisted. */
+	public boolean shaderAutoThrottleEnabled = true;
+	/** Consecutive stressed ticks before escalating a throttle level. */
+	public int shaderThrottleEnterSamples = 3;
+	/** Consecutive healthy ticks before dropping one throttle level. */
+	public int shaderThrottleRecoverSamples = 20;
+	/** p95 frame-time (ms) that counts as shader stress once enough frames exist. */
+	public double shaderThrottleP95Ms = 28.0;
+
 	/** Client-only: throttle LivingEntity.updateLimbs for far mobs. */
 	public boolean farLimbThrottle = true;
 	public double farLimbDistance = 72.0;
@@ -161,13 +170,9 @@ public final class M3Config {
 	public boolean farSoundSkip = true;
 	public double farSoundDistance = 56.0;
 
-	/** Fast ARM64 math tables for sin/cos/distance. */
-	public boolean useFastMath = true;
-
 	public static M3Config defaults() {
 		M3Config c = new M3Config();
-		c.applyProfile();
-		applyChipDefaults(c);
+		c.applyProfile(); // applyProfile() already applies chip scaling at its tail
 		return c;
 	}
 
@@ -179,7 +184,6 @@ public final class M3Config {
 		String p = performanceProfile == null ? "PLAYABLE" : performanceProfile.trim().toUpperCase();
 		performanceProfile = p;
 		retinaGuard = false;
-		useFastMath = true;
 		optimizeShadowPass = false;
 		spikeLogging = false;
 		spikeThresholdMs = 35;
@@ -287,8 +291,8 @@ public final class M3Config {
 				memoryPressureFreeMbThreshold = 384.0;
 				softCacheHints = true;
 				softCacheHintIntervalTicks = 60;
-				optimizeShadowPass = false;
-				shadowEntityDistance = 0.0;
+				optimizeShadowPass = true;
+				shadowEntityDistance = 48.0;
 			}
 			case "MAX" -> {
 				performanceProfile = "MAX";
@@ -351,8 +355,74 @@ public final class M3Config {
 				optimizeShadowPass = false;
 				shadowEntityDistance = 0.0;
 			}
+			case "SHADER" -> {
+				// SHADER — optimized for Iris/Oculus shader gameplay: aggressive GPU budget management,
+				// culls non-essential entities/particles to give maximum headroom to shader passes.
+				// Visual quality stays high — shaders handle the beauty.
+				performanceProfile = "SHADER";
+				swapInterval = -1;
+				entityCull = true;
+				entityCullDistance = 64.0;
+				overrideSodiumEntityCull = false;
+				skipEntityNametags = true;
+				particleCull = true;
+				particleCullDistance = 32.0;
+				maxParticles = 96;
+				blockEntityCull = true;
+				blockEntityCullDistance = 40.0;
+				skipFarSignText = true;
+				farSignDistance = 16.0;
+				skipFarBannerPatterns = true;
+				farBannerDistance = 20.0;
+				entityShadowSkip = true;
+				skipClouds = true; // Shader handles sky
+				skipWeatherParticles = false; // Shaders make rain beautiful
+				skipWeatherGeometry = false;
+				skipToasts = true;
+				skipStars = true; // Shader handles sky
+				skipWorldBorder = true;
+				skipBeaconBeams = false;
+				skipVignette = true; // Shader handles post-processing
+				skipNauseaOverlay = true;
+				skipScoreboard = false;
+				skipBossBar = false;
+				skipUnderwaterOverlay = true; // Shader handles underwater
+				skipFireOverlay = false;
+				skipBobView = false;
+				skipHurtTilt = false;
+				skipPortalOverlay = true;
+				skipStatusEffectOverlay = false;
+				skipFloatingItem = false;
+				skipSubtitles = true;
+				skipDemoOverlay = true;
+				skipLeashes = true;
+				farItemEntityThrottle = true;
+				farItemEntityDistance = 24.0;
+				farExperienceOrbThrottle = true;
+				farExperienceOrbDistance = 20.0;
+				skipItemGlint = true; // Shader does its own specular
+				lightmapThrottle = true;
+				farPotionSwirlSkip = true;
+				farPotionSwirlDistance = 32.0;
+				forceFastGraphics = false;
+				entityDistanceScaling = 0.75;
+				farLimbThrottle = true;
+				farLimbDistance = 48.0;
+				farLimbTickMask = 3;
+				farParticleSpawnSkip = true;
+				ambientParticleThrottle = true;
+				farSoundSkip = true;
+				farSoundDistance = 40.0;
+				memoryPressureFreeMbThreshold = 512.0; // Higher threshold for shader VRAM
+				softCacheHints = true;
+				softCacheHintIntervalTicks = 30;
+				optimizeShadowPass = true;
+				shadowEntityDistance = 32.0;
+			}
 			default -> {
 				// PLAYABLE — default: looks pristine, RD 100% user-owned, ultra-optimized for 100+ FPS.
+				// Gameplay cues stay intact here (world border visible, far sounds audible);
+				// MAX/SHADER strip them for extra headroom.
 				performanceProfile = "PLAYABLE";
 				swapInterval = -1;
 				entityCull = true;
@@ -374,7 +444,7 @@ public final class M3Config {
 				skipWeatherGeometry = false;
 				skipToasts = false;
 				skipStars = false;
-				skipWorldBorder = true;
+				skipWorldBorder = false;
 				skipBeaconBeams = false;
 				skipVignette = false;
 				skipNauseaOverlay = false;
@@ -405,7 +475,7 @@ public final class M3Config {
 				farLimbTickMask = 3;
 				farParticleSpawnSkip = true;
 				ambientParticleThrottle = true;
-				farSoundSkip = true;
+				farSoundSkip = false;
 				farSoundDistance = 56.0;
 				memoryPressureFreeMbThreshold = 384.0;
 				softCacheHints = true;
@@ -417,25 +487,36 @@ public final class M3Config {
 		applyChipDefaults(this);
 	}
 
+	/**
+	 * Active per-chip tuning. The profile's numeric budgets are treated as the BASE-tier target;
+	 * stronger chips (PRO/MAX/ULTRA) scale render distances and particle budgets up, while the
+	 * physical RAM class stays the hard ceiling. Called at the tail of {@link #applyProfile()}
+	 * once — right after the profile has re-set its baseline values — so it never compounds.
+	 * No-op until {@link SiliconChipInfo#isRegistered()} so placeholder budgets never persist.
+	 */
 	public static void applyChipDefaults(M3Config cfg) {
-		ChipTier tier = SiliconChipInfo.getChipTier();
-		switch (tier) {
-			case BASE:
-				cfg.maxParticles = Math.min(cfg.maxParticles, SiliconChipInfo.getMaxParticles());
-				cfg.entityCullDistance = Math.min(cfg.entityCullDistance, SiliconChipInfo.getEntityCullDistance());
-				break;
-			case PRO:
-				cfg.maxParticles = Math.min(cfg.maxParticles, SiliconChipInfo.getMaxParticles());
-				cfg.entityCullDistance = Math.min(cfg.entityCullDistance, SiliconChipInfo.getEntityCullDistance());
-				break;
-			case MAX:
-				cfg.maxParticles = Math.min(cfg.maxParticles, SiliconChipInfo.getMaxParticles());
-				cfg.entityCullDistance = Math.min(cfg.entityCullDistance, SiliconChipInfo.getEntityCullDistance());
-				break;
-			case ULTRA:
-				cfg.maxParticles = Math.min(cfg.maxParticles, SiliconChipInfo.getMaxParticles());
-				cfg.entityCullDistance = Math.min(cfg.entityCullDistance, SiliconChipInfo.getEntityCullDistance());
-				break;
+		if (!SiliconChipInfo.isRegistered()) {
+			return;
+		}
+		double distScale;
+		double particleScale;
+		switch (SiliconChipInfo.getChipTier()) {
+			case ULTRA -> { distScale = 1.45; particleScale = 2.0; }
+			case MAX   -> { distScale = 1.25; particleScale = 1.6; }
+			case PRO   -> { distScale = 1.10; particleScale = 1.3; }
+			default    -> { distScale = 1.0;  particleScale = 1.0; } // BASE
+		}
+		cfg.entityCullDistance = RamClassPolicy.capEntityCull(cfg.entityCullDistance * distScale);
+		cfg.particleCullDistance = RamClassPolicy.capParticleCull(cfg.particleCullDistance * distScale);
+		cfg.blockEntityCullDistance = RamClassPolicy.capBlockEntityCull(cfg.blockEntityCullDistance * distScale);
+		cfg.farSoundDistance = Math.min(256.0, cfg.farSoundDistance * distScale);
+		cfg.maxParticles = RamClassPolicy.capParticles((int) Math.round(cfg.maxParticles * particleScale));
+		if (RamClassPolicy.isRegistered()) {
+			cfg.memoryPressureFreeMbThreshold = Math.max(cfg.memoryPressureFreeMbThreshold, RamClassPolicy.pressureEnterMb());
+			cfg.memoryPressureRecoverMbThreshold = Math.max(
+				cfg.memoryPressureRecoverMbThreshold,
+				Math.max(cfg.memoryPressureFreeMbThreshold, RamClassPolicy.pressureRecoverMb())
+			);
 		}
 	}
 
@@ -466,7 +547,7 @@ public final class M3Config {
 			}
 			if (merged.performanceProfile == null || merged.performanceProfile.isBlank()) merged.performanceProfile = "PLAYABLE";
 			String profile = merged.performanceProfile.trim().toUpperCase();
-			if (!profile.equals("TELEMETRY") && !profile.equals("BALANCED") && !profile.equals("MAX") && !profile.equals("PLAYABLE")) merged.performanceProfile = "PLAYABLE";
+			if (!profile.equals("TELEMETRY") && !profile.equals("BALANCED") && !profile.equals("MAX") && !profile.equals("PLAYABLE") && !profile.equals("SHADER")) merged.performanceProfile = "PLAYABLE";
 			sanitize(merged);
 			return merged;
 		} catch (Exception e) {
@@ -494,6 +575,9 @@ public final class M3Config {
 		cfg.memoryPressureRecoverSamples = Math.max(1, Math.min(120, cfg.memoryPressureRecoverSamples));
 		cfg.heapPressureEnterRatio = finiteRange(cfg.heapPressureEnterRatio, 0.90, 0.50, 0.99);
 		cfg.heapPressureRecoverRatio = finiteRange(cfg.heapPressureRecoverRatio, 0.80, 0.25, cfg.heapPressureEnterRatio);
+		cfg.shaderThrottleEnterSamples = Math.max(1, Math.min(20, cfg.shaderThrottleEnterSamples));
+		cfg.shaderThrottleRecoverSamples = Math.max(1, Math.min(120, cfg.shaderThrottleRecoverSamples));
+		cfg.shaderThrottleP95Ms = finiteRange(cfg.shaderThrottleP95Ms, 28.0, 8.0, 100.0);
 		cfg.farLimbTickMask = Math.max(0, cfg.farLimbTickMask);
 		cfg.swapInterval = Math.max(-1, Math.min(1, cfg.swapInterval));
 

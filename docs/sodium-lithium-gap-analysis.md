@@ -77,53 +77,54 @@ Lithium does **not** own: GPU fill-rate, entity *render* distance, HUD overlays,
 
 ---
 
-## Still free for m3-frametime (prioritized mixin targets)
+## Leftovers after the stack (ownership)
 
-Leftovers after Sodium + Lithium + FerriteCore + ImmediatelyFast, ranked for **felt hitch / GPU fill on 8GB M3**. Exact-target injections, Sodium-aware where noted.
+Policy leftovers after Sodium + Lithium + FerriteCore + ImmediatelyFast, ranked for **felt hitch / GPU fill on 8GB M3**. SiliconFlow owns **distance / skip / budget policy** on these paths — not Sodium meshing, Lithium AI, ImmediatelyFast batching, or Iris shader internals. Exact-target injections, `defaultRequire: 0`, Sodium-aware where noted. Pacing stays **OFF**.
 
-### P0 — implement / keep (high leftover value)
+### P0 — implemented (registered in `m3frametime.client.mixins.json`)
 
-| Priority | Target (Yarn 1.21.4) | Why free | Notes |
-|----------|----------------------|----------|-------|
-| **1** | `ItemStack.hasGlint` + `ItemRenderer.getItemGlintConsumer` / `getArmorGlintConsumer` | Nobody skips foil multipass | Big Metal fill win; additive visual tradeoff |
-| **2** | `LightmapTextureManager.update` | Sodium doesn’t cadence lightmap | Soft every-other-frame when no NV/darkness/water |
-| **3** | Entity **distance** cull (`EntityRenderDispatcher.shouldRender`) | Sodium frustum ≠ distance policy | Distance-only when Sodium present (`StackCompat`) |
-| **4** | Particle **spawn budget** + far spawn skip | IF/Sodium batch draws; Lithium only biome chance | Already: `ParticleManager` / `ClientWorld` |
-| **5** | Weather particles + `renderWeather` geometry | Sodium keeps weather path | Already: `WorldRenderer` / `WeatherRendering` |
-| **6** | Far limb `LivingEntity.updateLimbs` (client-only) | Lithium ticks logic, not limb anim | Already: `LivingEntityLimbMixin` |
-| **7** | Far positional `SoundSystem.play` | Lithium skips *unused ambient attempts*; not distance policy | Already: `SoundSystemMixin` |
-| **8** | HUD / overlay skips (vignette, nausea, scoreboard, underwater, bob/hurt) | IF batches HUD; doesn’t delete elements | Already: HUD / overlay / `GameRenderer` mixins |
-| **9** | Clouds / stars / border / beacon beams | Optional Sodium clouds ≠ our skip policy | Already present |
-| **10** | Block-entity **distance** render skip | Sodium lists BEs; distance leftover | Already: `BlockEntityRenderDispatcher` |
+These mixins exist and are wired to `M3Config` flags. They are skip/distance/budget overlays, not replacements of the owning mods.
 
-### P1 — strong candidates (not yet / careful)
+| Area | Mixin(s) | Policy flag(s) | Why free vs the stack |
+|------|----------|----------------|------------------------|
+| Enchantment glint | `ItemStackMixin`, `ItemRendererGlintMixin` | `skipItemGlint` | Nobody skips foil multipass |
+| Lightmap cadence | `LightmapTextureManagerMixin` | `lightmapThrottle` | Sodium doesn’t cadence lightmap; skipped under NV/darkness/water |
+| Entity **distance** cull | `EntityRenderDispatcherMixin` | `entityCull`, `entityCullDistance`, `optimizeShadowPass` | Sodium frustum ≠ distance policy; distance-only when Sodium present unless `overrideSodiumEntityCull` |
+| Particle spawn budget + far skip | `ParticleManagerMixin`, `ClientWorldMixin` | `particleCull`, `maxParticles`, `farParticleSpawnSkip`, `ambientParticleThrottle` | IF/Sodium batch draws; Lithium only biome chance |
+| Weather particles + geometry | `WeatherRenderingMixin`, `WorldRendererSkipMixin` | `skipWeatherParticles`, `skipWeatherGeometry` | Sodium keeps the weather path |
+| Far limb anim (client-only) | `LivingEntityLimbMixin` | `farLimbThrottle` | Lithium ticks logic, not limb anim |
+| Far positional sound | `SoundSystemMixin` | `farSoundSkip` | Lithium skips unused ambient *attempts*; not distance policy. Plugin skips if Sound Physics / Voice Chat loaded |
+| HUD / overlay skips | `InGameHudMixin`, `InGameOverlayRendererMixin`, `GameRendererMixin` | vignette, nausea, scoreboard, portal, status-effect, underwater, fire, bob, hurt, floating item | IF batches HUD; doesn’t delete elements |
+| Clouds / stars / border / beacon | `CloudRendererMixin`, `WorldRendererSkipMixin`, `SkyRenderingMixin`, `WorldBorderRenderingMixin`, `BeaconBlockEntityRendererMixin` | `skipClouds`, `skipStars`, `skipWorldBorder`, `skipBeaconBeams` | Optional Sodium clouds ≠ skip policy |
+| Block-entity **distance** skip | `BlockEntityRenderDispatcherMixin` | `blockEntityCull` | Sodium lists BEs; distance leftover |
 
-| Priority | Target | Why free | Risk |
-|----------|--------|----------|------|
-| **11** | Retina / backing scale (`Window` / GLFW cocoa) | Stack doesn’t own HiDPI policy | Prefer Sodium Extra reduce-res when present |
-| **12** | View/sim distance clamp + FAST graphics nudge | Options only | Don’t touch Sodium chunk allocator |
-| **13** | Memory-pressure / GC / spike telemetry | Unique to companion | Measure-only OK |
-| **14** | Skip fire overlay / portal overlays | Fill-rate | Fire = gameplay cue — opt-in only |
-| **15** | Client chunk **light** updates cadence | Not Lithium’s server light | Easy to desync; soft only |
-| **16** | Experience orb / item-entity render throttle | Distance cull covers most | Avoid fighting EntityCulling mod if present |
-| **17** | Worker QoS / tiny pool | Amplify Sodium meshing cores | Keep `StackCompat.preferredWorkerThreads` |
+Also registered (same policy layer, not P0 leftovers): nametags/leashes (`EntityRendererMixin`, `LivingEntityRendererMixin`), potion swirl (`LivingEntityPotionSwirlMixin`), far item/orb render (`ItemEntityRendererMixin`, `ExperienceOrbEntityRendererMixin`), far sign text (`SignTextMixin`), far banner patterns (`BannerPatternMixin`), toasts / subtitles / boss bar (`ToastManagerMixin`, `SubtitlesHudMixin`, `BossBarHudMixin`). Accessors: `ParticleManagerAccessor`, `ScreenAccessor`. HUD chrome: `VanillaDebugHudMixin`, `OptionsScreenMixin`. Loop: `MinecraftClientMixin` (EMA sample; pacing gated and off).
 
-### P2 — low / situational
+### P1 — not mixins yet / careful
 
-- Chat / tab-list density, toast skip (have), boss bar (opt-in)
-- Fishing line / leash / painting extras
-- Status-effect icon density (IF already batches)
+| Target | Why still open | Notes |
+|--------|----------------|-------|
+| Retina / backing scale (`Window` / GLFW cocoa) | Stack doesn’t own HiDPI policy | Prefer Sodium Extra reduce-res when present |
+| View/sim distance clamp | Options / user Video setting | Don’t touch Sodium chunk allocator |
+| FAST graphics nudge | `forceFastGraphics` exists on config | No mixin or other caller yet |
+| Client chunk **light** updates cadence | Not Lithium’s server light | Easy to desync; no mixin yet |
+
+Non-mixin companion work (not gap mixins): memory-pressure / GC probes (`RamDiscipline`, `MemoryPressureProbe`), worker QoS / tiny pool (`DarwinQos`, `StackCompat.preferredWorkerThreads`). Fire overlay mixin exists (`skipFireOverlay`) but stays **opt-in** (gameplay cue; profiles leave it false).
+
+### P2 — low / situational (no extra mixins)
+
+- Chat / tab-list density
+- Fishing line / painting extras (leashes already have `skipLeashes`)
+- Status-effect icon density (IF already batches; overlay skip is separate)
 - Autosave I/O / Spotlight — OS/docs, not mixins
 
 ### Vanilla macOS waste the stack still leaves
 
 1. **OpenGL→Metal** translation + buffer flushes (allocator `SWAP` is config, not ours)
-2. **Retina 2×** framebuffer (~4× pixels)
+2. **Retina 2×** framebuffer (~4× pixels) — no Window mixin
 3. **Unified memory / swap** (heap sizing — docs/JVM, not mixins)
-4. **Broken VSync / ProMotion** (GLFW) — our swapInterval hooks only; pacing OFF
-5. **Enchantment glint multipass** (P0 #1)
-6. **Per-frame lightmap rebuild/upload** (P0 #2)
-7. **Weather / HUD / far entities** fill and CPU (our existing soft skips)
+4. **Broken VSync / ProMotion** (GLFW) — `swapInterval` hooks only; pacing OFF
+5. Glint / lightmap / weather / HUD / far-entity fill — **policy mixins above**, not a Sodium/Lithium replacement
 
 ---
 
@@ -153,18 +154,10 @@ Leftovers after Sodium + Lithium + FerriteCore + ImmediatelyFast, ranked for **f
 
 ---
 
-## Implemented (1.0.4)
+## Current SiliconFlow ownership (honest)
 
-### Gaps filled
-- `ItemStackMixin` + `ItemRendererGlintMixin` — `skipItemGlint`
-- `LivingEntityPotionSwirlMixin` — `farPotionSwirlSkip`
-- Existing particle/BE/entity-distance/weather/HUD/sound/limb soft skips
-- **`RamDiscipline`**: soft cache hints (ScratchPool + particle trim, never `the JVM collector`), auto emergency under `MemoryPressureProbe`
-- Soft mipmap / view / sim clamps (emergency tightens further)
+**Owns:** config-gated skip / distance / spawn-budget overlays on the P0 (and listed extra) mixins; `RamDiscipline` scratch + particle-trim hints (never `System.gc()`); optional shader auto-throttle of *our* flags; F8 overlay / dashboard / recorder.
 
-### Overlaps improved (amplify, not mesh rewrite)
-- `overrideSodiumEntityCull` (PLAYABLE/MAX): distance + cheap AABB frustum early-out with Sodium
-- PLAYABLE particle budget (**192** / **40m**; emergency **48** / **20m**) vs Sodium/IF render-only opts
-- HUD element *deletion* optional (MAX); PLAYABLE keeps clouds/weather/stars/portals/effects
-- Client-only limb + potion swirl skips (Lithium owns tick *logic*)
-- PLAYABLE: **no hard RD clamp** (user Video setting); emergency view≤**4** temporary + restore; MAX soft ceiling ≤**16**
+**Does not own:** Sodium terrain/occlusion/GL, Lithium AI/collision/ticks, FerriteCore maps, ImmediatelyFast buffers, Iris shader pipeline, macOS scheduling, or frame-pacing sleep (explicitly OFF).
+
+**Does not claim:** FPS, GPU utilization, VRAM, or that mixins are “already done” for targets that have no class in `m3frametime.client.mixins.json` (Retina, chunk-light cadence).

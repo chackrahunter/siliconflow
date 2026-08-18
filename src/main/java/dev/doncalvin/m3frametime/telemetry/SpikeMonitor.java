@@ -1,44 +1,30 @@
 package dev.doncalvin.m3frametime.telemetry;
 
 import dev.doncalvin.m3frametime.M3FrametimeMod;
+import dev.doncalvin.m3frametime.compat.IrisCompat;
 import dev.doncalvin.m3frametime.compat.StackCompat;
 import dev.doncalvin.m3frametime.pacing.FramePacer;
 import dev.doncalvin.m3frametime.pool.ScratchPool;
-import dev.doncalvin.m3frametime.threading.SpscRingBuffer;
+import dev.doncalvin.m3frametime.threading.AdaptiveWorkerPool;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * High-precision micro-stutter diagnostic engine with 236-code Error Matrix for Apple Silicon M3.
- * 100% zero-allocation architecture in all hot paths.
+ * High-precision micro-stutter diagnostic engine. Attribution uses
+ * {@link StutterErrorCode#fromSpike} against the live catalog ({@link StutterErrorCode#totalCount()} codes).
+ * Histogram / ring updates stay allocation-free; Sodium allocator sampling is off-thread.
  */
 public final class SpikeMonitor {
-	public static final class SpikeEvent {
-		public long frameDeltaNanos;
-		public StutterErrorCode errorCode = StutterErrorCode.OK_000;
-		public long gcDeltaMs;
-		public long freeMb;
-		public long wallNanos;
-		public long timestampMillis;
-
-		public void set(long frameDeltaNanos, StutterErrorCode errorCode, long gcDeltaMs, long freeMb, long wallNanos) {
-			this.frameDeltaNanos = frameDeltaNanos;
-			this.errorCode = errorCode != null ? errorCode : StutterErrorCode.OK_000;
-			this.gcDeltaMs = gcDeltaMs;
-			this.freeMb = freeMb;
-			this.wallNanos = wallNanos;
-			this.timestampMillis = System.currentTimeMillis();
-		}
-	}
-
 	private static final int BUCKETS = 500; // 0..50 ms in 0.1 ms steps
-	private static final int RING = 32;
+	private static final int ROLLING_CAP = 1024;
+	private static final long ROLLING_WINDOW_NANOS = 5_000_000_000L;
+	private static final long PERCENTILE_PERIOD_NANOS = 100_000_000L;
 	private static final SpikeMonitor INSTANCE = new SpikeMonitor();
 
 	private final long[] histogram = new long[BUCKETS];
-	private final SpikeEvent[] ringSlots;
-	private final SpscRingBuffer<SpikeEvent> recent;
-	private final SpikeEvent[] overlayCopy = new SpikeEvent[16];
 
 	private long frameCount;
 	private long spikeCount;
@@ -50,6 +36,12 @@ public final class SpikeMonitor {
 	private long lastSpikeHeapUsedMb;
 	private long lastSpikeHeapMaxMb;
 
+	private volatile boolean sodiumAllocatorWarning;
+	private final AtomicBoolean sodiumSampling = new AtomicBoolean();
+	private volatile long lastSodiumSampleNanos;
+	private static volatile Method sodiumWarningMethod;
+	private static volatile boolean sodiumWarningResolved;
+
 	// Min / Max FPS tracking
 	private long sessionMinDeltaNanos = Long.MAX_VALUE;
 	private long sessionMaxDeltaNanos = 0;
@@ -59,16 +51,17 @@ public final class SpikeMonitor {
 	private int cachedRollingMinFps;
 	private int cachedRollingMaxFps;
 
-	private SpikeMonitor() {
-		ringSlots = new SpikeEvent[RING];
-		for (int i = 0; i < RING; i++) {
-			ringSlots[i] = new SpikeEvent();
-		}
-		recent = new SpscRingBuffer<>(RING, ringSlots);
-		for (int i = 0; i < overlayCopy.length; i++) {
-			overlayCopy[i] = new SpikeEvent();
-		}
-	}
+	private final long[] rollingDeltaNanos = new long[ROLLING_CAP];
+	private final long[] rollingStampNanos = new long[ROLLING_CAP];
+	private final long[] rollingScratch = new long[ROLLING_CAP];
+	private int rollingWrite;
+	private int rollingSize;
+	private long lastPercentileComputeNanos;
+	private double cachedRollingP50Ms;
+	private double cachedRollingP95Ms;
+	private double cachedRollingP99Ms;
+
+	private SpikeMonitor() {}
 
 	public static SpikeMonitor get() {
 		return INSTANCE;
@@ -77,6 +70,7 @@ public final class SpikeMonitor {
 	public void onFrameEnd(long deltaNanos) {
 		frameCount++;
 		long now = System.nanoTime();
+		requestSodiumAllocatorSample();
 
 		// Track session min/max frametimes (ignoring the very first warm-up frame)
 		if (frameCount > 20 && deltaNanos > 500_000L) { // > 0.5ms (up to 2000 FPS cap)
@@ -111,6 +105,7 @@ public final class SpikeMonitor {
 			bucket = BUCKETS - 1;
 		}
 		histogram[bucket]++;
+		recordRollingSample(deltaNanos, now);
 
 		double emaNanos = FramePacer.get().emaDeltaNanos();
 		long thresholdNanos = M3FrametimeMod.config().spikeThresholdMs * 1_000_000L;
@@ -125,13 +120,15 @@ public final class SpikeMonitor {
 
 		GcProbe gc = GcProbe.get();
 		MemoryPressureProbe mem = MemoryPressureProbe.get();
+		boolean shadowPass = StackCompat.isShadowPass() || IrisCompat.queryLiveShadowPass();
 		StutterErrorCode code = StutterErrorCode.fromSpike(
 			deltaNanos,
 			gc,
 			mem,
 			SpikeScope.get().dominant(),
 			StackCompat.isShaderActive(),
-			StackCompat.isShadowPass()
+			shadowPass,
+			sodiumAllocatorWarning
 		);
 
 		lastErrorCode = code;
@@ -143,10 +140,6 @@ public final class SpikeMonitor {
 		lastSpikeHeapMaxMb = mem.heapMaxMb();
 		spikeCount++;
 		PerformanceRecorder.get().recordFrame(deltaNanos, true, code);
-
-		SpikeEvent slot = recent.forceClaimWriteSlot();
-		slot.set(deltaNanos, code, lastSpikeGcDeltaMs, lastSpikeFreePhysMb, now);
-		recent.publishWrite();
 	}
 
 	public long frameCount() {
@@ -159,6 +152,13 @@ public final class SpikeMonitor {
 
 	public StutterErrorCode lastErrorCode() {
 		return lastErrorCode;
+	}
+
+	/**
+	 * Cached ChipPower Sodium-allocator warning. Sampled off-thread; may lag one interval.
+	 */
+	public boolean sodiumAllocatorWarning() {
+		return sodiumAllocatorWarning;
 	}
 
 	public double lastSpikeMs() {
@@ -198,6 +198,21 @@ public final class SpikeMonitor {
 		return cachedRollingMinFps > 0 ? cachedRollingMinFps : minFps();
 	}
 
+	/** Rolling 5-second median frametime in milliseconds. */
+	public double rollingP50Ms() {
+		return cachedRollingP50Ms;
+	}
+
+	/** Rolling 5-second p95 frametime in milliseconds. */
+	public double rollingP95Ms() {
+		return cachedRollingP95Ms;
+	}
+
+	/** Rolling 5-second p99 frametime in milliseconds. */
+	public double rollingP99Ms() {
+		return cachedRollingP99Ms;
+	}
+
 	/** Percentile from histogram; p in [0,1]. */
 	public double percentileMs(double p) {
 		if (frameCount == 0) {
@@ -212,20 +227,6 @@ public final class SpikeMonitor {
 			}
 		}
 		return BUCKETS * 0.1;
-	}
-
-	public int drainRecent(SpikeEvent[] out) {
-		int n = 0;
-		SpikeEvent e;
-		while (n < out.length && (e = recent.poll()) != null) {
-			out[n].set(e.frameDeltaNanos, e.errorCode, e.gcDeltaMs, e.freeMb, e.wallNanos);
-			n++;
-		}
-		return n;
-	}
-
-	public SpikeEvent[] overlayScratch() {
-		return overlayCopy;
 	}
 
 	/** Appends compact F3 left-panel lines with zero heap allocations. */
@@ -270,6 +271,60 @@ public final class SpikeMonitor {
 		out.add(sb.toString());
 	}
 
+	private void recordRollingSample(long deltaNanos, long now) {
+		if (deltaNanos <= 500_000L) {
+			return;
+		}
+		rollingDeltaNanos[rollingWrite] = deltaNanos;
+		rollingStampNanos[rollingWrite] = now;
+		rollingWrite++;
+		if (rollingWrite >= ROLLING_CAP) {
+			rollingWrite = 0;
+		}
+		if (rollingSize < ROLLING_CAP) {
+			rollingSize++;
+		}
+		if (now - lastPercentileComputeNanos >= PERCENTILE_PERIOD_NANOS) {
+			recomputeRollingPercentiles(now);
+			lastPercentileComputeNanos = now;
+		}
+	}
+
+	private void recomputeRollingPercentiles(long now) {
+		int n = 0;
+		long cutoff = now - ROLLING_WINDOW_NANOS;
+		for (int i = 0; i < rollingSize; i++) {
+			int idx = rollingWrite - rollingSize + i;
+			if (idx < 0) {
+				idx += ROLLING_CAP;
+			}
+			if (rollingStampNanos[idx] >= cutoff) {
+				rollingScratch[n++] = rollingDeltaNanos[idx];
+			}
+		}
+		if (n <= 0) {
+			cachedRollingP50Ms = 0.0;
+			cachedRollingP95Ms = 0.0;
+			cachedRollingP99Ms = 0.0;
+			return;
+		}
+		Arrays.sort(rollingScratch, 0, n);
+		cachedRollingP50Ms = rollingScratch[percentileIndex(n, 0.50)] / 1_000_000.0;
+		cachedRollingP95Ms = rollingScratch[percentileIndex(n, 0.95)] / 1_000_000.0;
+		cachedRollingP99Ms = rollingScratch[percentileIndex(n, 0.99)] / 1_000_000.0;
+	}
+
+	private static int percentileIndex(int n, double p) {
+		int idx = (int) Math.ceil(n * p) - 1;
+		if (idx < 0) {
+			return 0;
+		}
+		if (idx >= n) {
+			return n - 1;
+		}
+		return idx;
+	}
+
 	private static StringBuilder formatAge(StringBuilder sb, long ageMs) {
 		if (ageMs < 1000L) {
 			return sb.append(ageMs).append("ms");
@@ -281,5 +336,46 @@ public final class SpikeMonitor {
 		long min = sec / 60L;
 		sec %= 60L;
 		return sb.append(min).append("m ").append(sec).append("s");
+	}
+
+	/**
+	 * Reflects into client ChipPower off the render thread. ChipPower may read Sodium JSON
+	 * on a cache miss; never do that on the frame path.
+	 */
+	private void requestSodiumAllocatorSample() {
+		if (!StackCompat.sodium()) {
+			sodiumAllocatorWarning = false;
+			return;
+		}
+		long now = System.nanoTime();
+		if (lastSodiumSampleNanos != 0L && now - lastSodiumSampleNanos < 5_000_000_000L) {
+			return;
+		}
+		if (!sodiumSampling.compareAndSet(false, true)) {
+			return;
+		}
+		lastSodiumSampleNanos = now;
+		AdaptiveWorkerPool.get().execute(() -> {
+			try {
+				Method method = sodiumWarningMethod;
+				if (!sodiumWarningResolved) {
+					try {
+						Class<?> clz = Class.forName("dev.doncalvin.m3frametime.client.ChipPower");
+						method = clz.getMethod("sodiumAllocatorWarning");
+						sodiumWarningMethod = method;
+					} catch (Throwable ignored) {
+						method = null;
+					}
+					sodiumWarningResolved = true;
+				}
+				if (method != null) {
+					sodiumAllocatorWarning = method.invoke(null) != null;
+				}
+			} catch (Throwable ignored) {
+				sodiumAllocatorWarning = false;
+			} finally {
+				sodiumSampling.set(false);
+			}
+		});
 	}
 }

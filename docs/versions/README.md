@@ -1,6 +1,6 @@
 # Version matrix and artifact selection
 
-This repository intentionally builds one Fabric JAR per Minecraft release. The current target is **Minecraft 1.21.4**. The current artifact version is `1.0.36+1.21.4`. `compatibility-matrix.json` is the source-of-truth inventory for implementation status; it is not a claim that every listed release is supported.
+This repository intentionally builds one Fabric JAR per Minecraft release. The current target is **Minecraft 1.21.4**. The current artifact version is `1.0.38+1.21.4`. `compatibility-matrix.json` is the source-of-truth inventory for implementation status; it is not a claim that every listed release is supported.
 
 ## Adding a target
 

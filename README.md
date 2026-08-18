@@ -24,7 +24,7 @@
 </p>
 
 <p><strong>High-performance Minecraft optimization for Apple-Silicon Macs.</strong><br>
-<sub>Client-side frame pacing, memory discipline, and visual-workload controls for M-series chips.</sub></p>
+<sub>Client-side frame-time discipline, memory discipline, and visual-workload controls for M-series chips.</sub></p>
 
 </div>
 
@@ -37,7 +37,7 @@
   <img src="docs/assets/hud_preview.png" alt="Minecraft forest gameplay with the SiliconFlow F8 diagnostic overlay visible" width="100%">
 </p>
 
-<p align="center"><em>Genuine Minecraft capture from the project. The optional F8 overlay is diagnostic context, not a benchmark result; labels may differ between builds.</em></p>
+<p align="center"><em>Genuine Minecraft capture from the project. The optional F8 compact overlay is diagnostic context, not a benchmark result; labels may differ between builds.</em></p>
 
 <p align="center"><sub>Visuals use restrained SVG motion where it explains signal flow. Reduced-motion settings automatically show the same clean static diagrams.</sub></p>
 
@@ -51,13 +51,13 @@
 
 </div>
 
-SiliconFlow is a high-performance boost and optimization mod for Fabric Minecraft on Apple-Silicon Macs with M-series chips. It focuses on practical client-side improvements: steadier frame pacing, conservative memory behavior, reduced rendering overhead, and configurable visual-workload controls. Profiles are bounded and user-owned so you can tune the balance between smoothness, image detail, and system headroom.
+SiliconFlow is a Fabric client optimization mod for Apple-Silicon Macs. It owns mixin-based visual-workload controls (entity, particle, HUD, and related culls), memory-aware budgets, and optional diagnostics. It does not replace Sodium terrain rendering or the Iris shader pipeline. Profiles are bounded and user-owned so you can choose the trade-off between image detail and system headroom. Frame pacing is **off by default**. No setting guarantees a particular FPS.
 
-The optional F8 overlay and performance recorder were created for development and troubleshooting. They are not the product’s purpose, are not required for normal gameplay, and do not turn SiliconFlow into a tracking or telemetry product.
+The F7 dashboard, F8 compact overlay, and performance recorder are optional. They are not required for normal gameplay and do not turn SiliconFlow into a tracking or telemetry product.
 
 1. **Install** the exact Minecraft 1.21.4 artifact.
-2. **Start** with the `PLAYABLE` profile.
-3. **Tune** individual settings only when your workload calls for it.
+2. **Start** with the `PLAYABLE` profile (use `SHADER` when Iris is the workload).
+3. **Tune** from the F7 dashboard only when your workload calls for it.
 
 | If you want to… | Start with… |
 | --- | --- |
@@ -77,7 +77,9 @@ SiliconFlow applies controls that are useful and supportable from the client. It
 
 ### Memory policy (mod-owned and reversible)
 
-The memory policy samples JVM heap occupancy and macOS-reported physical free memory asynchronously. It distinguishes heap pressure from shared physical-memory pressure; neither value is VRAM, and neither is an exact accounting of Sodium, Iris, OpenGL/Metal translation, or other native allocations. On three consecutive pressure samples it enters a hysteretic `MOD-OWNED TRIM` state, clears only SiliconFlow scratch state and reduces the mod-owned particle admission budget. It recovers only after twenty healthy samples and a higher free-memory margin, preventing rapid oscillation. It never calls `System.gc()`, changes `-Xmx`, render distance, simulation distance, shader quality, Sodium/Iris settings, or macOS settings. Disable with `memoryPolicyEnabled=false`; diagnostic recording remains separately opt-in.
+The memory policy samples JVM heap occupancy and macOS-reported physical free memory asynchronously. It distinguishes heap pressure from shared physical-memory pressure; neither value is VRAM, and neither is an exact accounting of Sodium, Iris, OpenGL/Metal translation, or other native allocations. RAM class (8 / 16 / 24 / 36+ GB) scales SiliconFlow-owned particle and cull budgets only. On three consecutive pressure samples it enters a hysteretic `MOD-OWNED TRIM` state, clears only SiliconFlow scratch state and reduces the mod-owned particle admission budget. It recovers only after twenty healthy samples and a higher free-memory margin, preventing rapid oscillation.
+
+It never calls `System.gc()` and never silently rewrites `-Xmx`. On 8 GB machines it **warns** when the JVM heap looks oversized versus unified memory (typical 4G-style heap, or a heap that takes half of physical RAM). The warning does not change launcher JVM arguments. Disable the policy with `memoryPolicyEnabled=false`; diagnostic recording remains separately opt-in.
 
 <p align="center">
   <img src="docs/assets/performance-model.svg" alt="Diagram showing Apple-Silicon optimization across shared memory, rendering, scheduling, and optional diagnostics" width="100%">
@@ -97,9 +99,12 @@ The memory policy samples JVM heap occupancy and macOS-reported physical free me
 
 Additional boundaries keep the mod honest:
 
-- **Shader-aware boundaries** — optional reductions do not attempt to replace or patch a shader pipeline.
+- **Mixin-owned visual workload** — entity, particle, block-entity, HUD, weather, glint, and related culls are SiliconFlow mixins gated by config. They are not a Sodium or Iris replacement.
+- **Shader auto-throttle L0–L2** — when Iris is active and frames or RAM are stressed, SiliconFlow can overlay its own skip/cull budgets for the session. It does **not** change Iris pack settings, shader quality, or the loaded pack.
+- **Sodium `SWAP`** — warning only. SiliconFlow never writes Sodium’s chunk memory allocator.
+- **Frame pacing** — `pacingEnabled` is **off by default**. Do not turn it on expecting higher FPS.
 - **Apple-Silicon-friendly requests** — best-effort Darwin QoS and thread-priority requests where supported; macOS retains scheduling authority.
-- **Optional developer tools** — an F8 overlay and bounded JSON recorder for troubleshooting and controlled comparisons; neither is required for normal gameplay.
+- **Optional developer tools** — F7 dashboard, F8 compact overlay, and a bounded JSON recorder; none are required for normal gameplay.
 - **User choice** — profiles and individual settings keep visual and performance trade-offs explicit.
 
 ### Profiles
@@ -107,11 +112,12 @@ Additional boundaries keep the mod honest:
 | Profile | Intended use | Character |
 | --- | --- | --- |
 | `PLAYABLE` | Normal gameplay | Recommended starting point; conservative and reversible |
+| `SHADER` | Iris shader runs | Extra SiliconFlow headroom for shader passes; Iris pack settings stay in Iris |
 | `BALANCED` | Heavier scenes | Stronger performance trade-off |
 | `MAX` | Difficult workloads | Aggressive visual-cost profile |
-| `TELEMETRY` | Investigation | Optional diagnostics-oriented behavior |
+| `TELEMETRY` | Investigation | Optional diagnostics-oriented behavior; no visual trimming |
 
-A profile is a policy preset, not a guarantee. Start with `PLAYABLE`, change one variable at a time, and compare the same workload.
+A profile is a policy preset, not a guarantee. Start with `PLAYABLE` (or `SHADER` for Iris), change one variable at a time, and compare the same workload.
 
 ## Ownership boundaries
 
@@ -123,9 +129,9 @@ SiliconFlow is designed to complement specialized mods instead of replacing thei
 | Game-logic optimizations and ticking | Lithium | Does not replace AI, collision, or tick scheduling |
 | Memory-structure deduplication | FerriteCore | Does not re-implement its model and blockstate caches |
 | Immediate-mode batching | ImmediatelyFast | Does not replace its immediate buffers or HUD batching |
-| Shader pipeline | Iris | Treats shader runs as a separate workload; no shader guarantee |
+| Shader pipeline | Iris | Treats shader runs as a separate workload; auto-throttle does not change pack settings |
 | Scheduling, memory pressure, swap, core placement | macOS | May request QoS; the OS remains authoritative |
-| Client-side policy, diagnostics, and selected visual workload | SiliconFlow | Bounded, configurable, and best-effort |
+| Mixin-owned visual workload, RAM class, diagnostics | SiliconFlow | Entity/particle/HUD culls, budgets, F7/F8 tools — not a Sodium/Iris replacement |
 
 <p align="center">
   <img src="docs/assets/architecture.svg" alt="Schematic showing Minecraft client workload flowing through SiliconFlow optimization policies to optional diagnostics and performance controls, with macOS retaining scheduling authority" width="100%">
@@ -137,9 +143,20 @@ SiliconFlow is designed to complement specialized mods instead of replacing thei
 
 These tools support SiliconFlow development and focused troubleshooting. SiliconFlow is an optimization mod, not a tracking or telemetry product.
 
-### F8 overlay
+### F7 dashboard
 
-Press **F8** to toggle the optional overlay. It reports observable signals such as frame-time samples, derived FPS, memory and GC probes, active profile state, and recent spikes. Values SiliconFlow cannot instrument are omitted or marked unavailable rather than invented.
+Press **F7** to open the SiliconFlow dashboard. Tabs:
+
+| Tab | Contents |
+| --- | --- |
+| Profiles | `PLAYABLE`, `SHADER`, `BALANCED`, `MAX`, `TELEMETRY` |
+| Tuning | Live SiliconFlow cull/budget sliders (Minecraft video and Iris pack settings stay elsewhere) |
+| Topology | Read-only chip/heap/UMA facts; macOS remains authoritative |
+| Diagnostics | Last stutter code, RAM/heap warnings, Sodium `SWAP` warning, shader throttle level |
+
+### F8 compact overlay
+
+Press **F8** to toggle the compact overlay strip. It reports observable signals such as frame-time samples, derived FPS, memory and GC probes, active profile state, and recent spikes. Values SiliconFlow cannot instrument are omitted or marked unavailable rather than invented.
 
 ### JSON recorder
 
@@ -177,10 +194,10 @@ That is a test environment, not a universal compatibility promise. Verify option
 1. Install **Minecraft 1.21.4**, Fabric Loader `0.16.14`, Fabric API `0.119.4`, and Java 21 or newer.
 2. Install the SiliconFlow release JAR built for **1.21.4** into the instance’s `mods/` directory.
 3. Add companion mods only when their exact versions match the workload you intend to test.
-4. Launch the game. SiliconFlow starts with its safe default profile; press **F8** only if you want the optional overlay.
+4. Launch the game. SiliconFlow starts on `PLAYABLE` with frame pacing off. Press **F7** for the dashboard or **F8** for the compact overlay.
 5. Enable recording in the generated configuration only when you need diagnostic evidence.
 
-Do not install this artifact into another Minecraft release and treat a successful file copy as compatibility evidence.
+Do not install this artifact into another Minecraft release and treat a successful file copy as compatibility evidence. A Prism instance folder named `1.21.11` does not make this JAR a 1.21.11 artifact — the compiled game target remains **1.21.4**.
 
 ## Configuration
 
@@ -190,7 +207,7 @@ The configuration is stored at:
 <instance>/config/m3-frametime.json
 ```
 
-The configuration owns user intent: active optimization profile, optional F8 overlay, bounded performance recording, spike threshold, optional spike logging, render-thread/Darwin QoS requests, and swap-interval behavior. It does not override the ownership boundaries above.
+The configuration owns user intent: active optimization profile (`PLAYABLE` / `SHADER` / `BALANCED` / `MAX` / `TELEMETRY`), mixin cull flags, optional F8 overlay, bounded performance recording, spike threshold, optional spike logging, and swap-interval behavior. Frame pacing (`pacingEnabled`) defaults to **false**. Shader auto-throttle is a session overlay and is not persisted as Iris pack changes. The file does not override the ownership boundaries above.
 
 Keep the file when troubleshooting. Reset it only when release notes or an implementation migration explicitly call for it.
 
@@ -225,10 +242,11 @@ For practical Apple-Silicon troubleshooting, see [`docs/max-fps-checklist.md`](d
 
 | Symptom | First checks |
 | --- | --- |
-| Overlay does not appear | Confirm the exact 1.21.4 artifact, launch once, press **F8**, then check the log for mixin or dependency errors. |
+| Overlay does not appear | Confirm the exact 1.21.4 artifact, launch once, press **F8** (compact overlay) or **F7** (dashboard), then check the log for mixin or dependency errors. |
 | Frequent long freezes | Use native aarch64 Java, watch macOS Memory Pressure, reduce render distance manually, and avoid oversized heaps on 8 GB systems. For the confirmed 8 GB M3 + Iris + 41-chunk near-heap failure, treat the heap ceiling as a user-controlled limit: prefer a native Java 21 runtime and a conservative Prism `-Xmx` (often around 2.5–3G depending on the rest of the modpack), then test; SiliconFlow does not force or rewrite JVM arguments. |
-| Chunk-loading hitching with Sodium | Test Sodium’s macOS **Chunk Memory Allocator = `SWAP`** and compare against a documented baseline. |
-| Shaders behave differently | Record the exact Iris version, shader pack, driver state, and settings; shader runs are separate and not guaranteed. |
+| Chunk-loading hitching with Sodium | SiliconFlow **warns only** when Sodium’s chunk allocator is readable and is not `SWAP`. It never writes Sodium config. Change the allocator in Sodium yourself, then compare against a documented baseline. |
+| 8 GB Mac with a huge heap | Treat F7 Diagnostics / F8 heap-vs-UMA warnings as advisory. SiliconFlow never rewrites `-Xmx`. Prefer a conservative launcher heap; a 4G-style heap on 8 GB unified memory is a common stutter source. |
+| Shaders behave differently | Record the exact Iris version, shader pack, driver state, and settings. Shader auto-throttle L0–L2 only overlays SiliconFlow budgets; it does not change the Iris pack. |
 | An optional diagnostic says unavailable | This is expected for signals SiliconFlow does not instrument, including GPU utilization, VRAM, and exact core placement. |
 | A configuration change worsens behavior | Restore the previous file or reset only when an upgrade note calls for it; then retest one variable at a time. |
 
@@ -238,11 +256,11 @@ When reporting an issue, include exact Minecraft/Fabric/Java versions, Mac model
 
 - **Beta:** APIs, profiles, labels, and behavior can change.
 - **Exact target:** the currently verified build is for Minecraft 1.21.4 only.
-- **Optional tools and integrations:** F8 diagnostics, recording, QoS requests, and companion integrations are best-effort; diagnostics may report unavailable data.
+- **Optional tools and integrations:** F7 dashboard, F8 compact overlay, recording, QoS requests, and companion integrations are best-effort; diagnostics may report unavailable data.
 - **OS authority:** macOS controls scheduling, memory pressure, swap, and core placement.
 - **Integration boundaries:** Sodium, Iris, shaders, resource packs, drivers, launchers, and other mods can change behavior.
-- **Visual trade-offs:** optional reductions can alter particles, overlays, glints, clouds, weather, or distant-entity presentation.
-- **No automatic magic:** choose settings deliberately and validate changes against a repeatable workload.
+- **Visual trade-offs:** mixin culls and the `MAX` / `SHADER` profiles can alter particles, overlays, glints, clouds, weather, or distant-entity presentation.
+- **No automatic magic:** choose settings deliberately and validate changes against a repeatable workload. Frame pacing stays off unless you enable it.
 
 ## Build and Prism deployment
 
@@ -250,7 +268,7 @@ When reporting an issue, include exact Minecraft/Fabric/Java versions, Mac model
 ./gradlew build --console=plain -Pprism_instance=1.21.11
 ```
 
-This compiles the exact `1.21.4` target and deploys the remapped artifact to the named Prism instance. The resulting JAR is written to `build/libs/`. Deployment to a differently versioned instance is not compatibility evidence.
+This compiles the exact `1.21.4` target and deploys the remapped artifact to the named Prism instance folder (here `1.21.11` is a local instance name, not a Minecraft-version claim). The resulting JAR is written to `build/libs/`. Deployment to a differently versioned instance is not compatibility evidence.
 
 ## Support
 

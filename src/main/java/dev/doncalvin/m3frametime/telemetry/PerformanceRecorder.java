@@ -25,25 +25,31 @@ public final class PerformanceRecorder {
     private PerformanceRecorder() {}
     public static PerformanceRecorder get() { return INSTANCE; }
 
-    public synchronized void recordFrame(long intervalNanos, boolean spike, StutterErrorCode code) {
+    // All three entry points run on the client/render thread (SpikeMonitor.onFrameEnd,
+    // MinecraftClientMixin, LiveTelemetryStream before its worker dispatch), so no lock is
+    // needed; the published Snapshot is the only cross-thread handoff and stays an AtomicReference.
+    public void recordFrame(long intervalNanos, boolean spike, StutterErrorCode code) {
         if (!M3FrametimeMod.config().performanceRecorderEnabled || intervalNanos <= 0) return;
+        int w = window();
+        // Guard against the window being lowered at runtime (keeps cursor/count in the new range).
+        if (cursor >= w) cursor = 0;
+        if (count > w) count = w;
         int index = cursor;
         intervals[index] = intervalNanos;
         spikes[index] = spike;
         codes[index] = code == null ? StutterErrorCode.OK_000.getCode() : code.getCode();
-        cursor = (cursor + 1) % window();
-        if (count < window()) count++;
+        cursor = (cursor + 1) % w;
+        if (count < w) count++;
         recordedFrames++;
         if (spike) recordedSpikes++;
     }
 
     /** Cheap render-thread gate; the actual system probes remain on the worker. */
-    public synchronized void sampleDiagnostics() {
+    public void sampleDiagnostics() {
         if (!M3FrametimeMod.config().performanceRecorderEnabled) return;
         long now = System.nanoTime();
         if (now - lastDiagnosticsNanos < 250_000_000L) return;
         lastDiagnosticsNanos = now;
-        Snapshot old = published.get();
         MemoryPressureProbe mem = MemoryPressureProbe.get();
         published.set(new Snapshot(now, recordedFrames, recordedSpikes, count,
             mem.heapUsedMb(), mem.heapMaxMb(), mem.freePhysicalMb(), mem.pressureAgeMs(),
@@ -53,14 +59,14 @@ public final class PerformanceRecorder {
             M3FrametimeMod.config().workerThreads, "measured"));
     }
 
-    public synchronized Snapshot snapshot() {
+    public Snapshot snapshot() {
         if (!M3FrametimeMod.config().performanceRecorderEnabled) return Snapshot.unavailable();
         Snapshot base = published.get();
-        int n = count;
+        int w = window();
+        int n = Math.min(count, w);
         double[] ms = new double[n];
         String[] errorCodes = new String[n];
         boolean[] spikeFlags = new boolean[n];
-        int w = window();
         int start = (cursor - n + w) % w;
         for (int i = 0; i < n; i++) {
             int index = (start + i) % w;

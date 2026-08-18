@@ -92,7 +92,8 @@ public final class MemoryPressureProbe {
 		heapUsedMb.set(used / (1024L * 1024L));
 		heapMaxMb.set(max / (1024L * 1024L));
 		// Treat ≥90% of -Xmx as heap pressure
-		heapPressure.set(max > 0 && used >= (long) (max * 0.90));
+		double enterRatio = M3FrametimeMod.config().heapPressureEnterRatio;
+		heapPressure.set(max > 0 && used >= (long) (max * enterRatio));
 	}
 
 	public boolean underPressure() {

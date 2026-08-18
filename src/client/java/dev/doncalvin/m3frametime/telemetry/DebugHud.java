@@ -1,53 +1,44 @@
 package dev.doncalvin.m3frametime.telemetry;
 
 import dev.doncalvin.m3frametime.M3FrametimeMod;
-import dev.doncalvin.m3frametime.compat.StackCompat;
-import dev.doncalvin.m3frametime.math.FastMath;
+import dev.doncalvin.m3frametime.client.ChipPower;
+import dev.doncalvin.m3frametime.compat.IrisCompat;
+import dev.doncalvin.m3frametime.config.M3Config;
+import dev.doncalvin.m3frametime.engine.ShaderAutoThrottle;
+import dev.doncalvin.m3frametime.engine.SiliconCpuTopology;
 import dev.doncalvin.m3frametime.pacing.FramePacer;
 import dev.doncalvin.m3frametime.pool.ScratchPool;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.render.RenderTickCounter;
 
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-
 /**
- * 1:1 Pixel-Perfect Glassmorphic Futuristic F8 Debug & Diagnostic HUD.
- * Renders glowing telemetry pills, live animated wave curves, real-time FPS/frametimes,
- * measured memory/network diagnostics, and the LED Dot-Matrix Status Badge.
- * 100% non-blocking, zero-lag, real-time responsive.
+ * Compact F8 telemetry strip. Hidden overlay skips all draw work.
  */
 public final class DebugHud {
 	private static final DebugHud INSTANCE = new DebugHud();
-	private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
 	private static final long FPS_WINDOW_NANOS = 250_000_000L;
-	private static final float TWO_PI = 6.2831855f;
-	private static final int[] LED_PATTERN = {4, 6, 7, 31, 28, 12, 4};
+	private static final int RING_SIZE = 32;
+	private static final int STRIP_W = 180;
+	private static final int STRIP_H = 120;
+	private static final int SPARK_BARS = 32;
+	private static final int SPARK_H = 14;
 
 	private boolean visible = false;
 	private boolean enabled = true;
-	private float wavePhase = 0.0f;
-	private long lastRenderNanos;
-	private long cachedClockSecond = Long.MIN_VALUE;
-	private String cachedTime = "--:--:--";
 
-	// Frame timing and live FPS measurement
 	private long lastFrameNanos = 0;
 	private long fpsWindowStartNanos = 0;
 	private int frameCountInWindow = 0;
 	private long frameNanosInWindow;
 
-	// Live smooth display metrics
 	private volatile int liveFps = 60;
 	private volatile double liveFtMs = 16.6;
 	private volatile double minFtMs = 16.6;
 	private volatile double maxFtMs = 16.6;
 	private volatile boolean shaderActive;
 
-	// Ring buffer for min/max calculation (32 samples)
-	private static final int RING_SIZE = 32;
 	private final double[] ftHistory = new double[RING_SIZE];
 	private int historyIdx = 0;
 	private int historyCount = 0;
@@ -96,7 +87,6 @@ public final class DebugHud {
 			return;
 		}
 
-		// Measure real frame-to-frame delta in milliseconds
 		if (lastFrameNanos > 0) {
 			long deltaNanos = now - lastFrameNanos;
 			double deltaMs = deltaNanos / 1_000_000.0;
@@ -110,7 +100,6 @@ public final class DebugHud {
 		}
 		lastFrameNanos = now;
 
-		// Calculate live rolling FPS over 250ms windows for crisp real-time reactivity
 		if (now - fpsWindowStartNanos >= FPS_WINDOW_NANOS && frameCountInWindow > 0) {
 			double elapsedSec = (now - fpsWindowStartNanos) / 1_000_000_000.0;
 			int calculatedFps = (int) Math.round(frameCountInWindow / Math.max(0.001, elapsedSec));
@@ -120,7 +109,6 @@ public final class DebugHud {
 				? frameNanosInWindow / (frameCountInWindow * 1_000_000.0)
 				: 1000.0 / Math.max(1, liveFps);
 
-			// Calculate rolling min/max
 			double min = 999.0;
 			double max = 0.0;
 			for (int i = 0; i < historyCount; i++) {
@@ -134,8 +122,8 @@ public final class DebugHud {
 			minFtMs = min < 900.0 ? min : liveFtMs * 0.85;
 			maxFtMs = max > 0.0 ? max : liveFtMs * 1.45;
 
-			shaderActive = StackCompat.isShaderActive();
-			boolean shadowPass = StackCompat.isShadowPass();
+			shaderActive = IrisCompat.isShaderActive();
+			boolean shadowPass = IrisCompat.isShadowPass();
 			MemoryPressureProbe memory = MemoryPressureProbe.get();
 			SpikeMonitor spikes = SpikeMonitor.get();
 			long spikeAge = spikes.lastSpikeAgeMs();
@@ -168,7 +156,7 @@ public final class DebugHud {
 	}
 
 	public void render(DrawContext context, RenderTickCounter tickCounter) {
-		if (!enabled || !visible) {
+		if (!M3FrametimeMod.config().overlayEnabled || !enabled || !visible) {
 			return;
 		}
 		MinecraftClient client = MinecraftClient.getInstance();
@@ -176,256 +164,179 @@ public final class DebugHud {
 			return;
 		}
 
-		// Time-based animation keeps the HUD stable across different frame rates.
-		long nowNanos = System.nanoTime();
-		if (lastRenderNanos == 0L) {
-			lastRenderNanos = nowNanos;
-		}
-		float deltaSeconds = Math.min(0.1f, Math.max(0.0f, (nowNanos - lastRenderNanos) / 1_000_000_000.0f));
-		lastRenderNanos = nowNanos;
-		wavePhase += deltaSeconds * 2.2f;
-		if (wavePhase > TWO_PI) {
-			wavePhase -= TWO_PI;
-		}
+		TextRenderer tr = client.textRenderer;
+		int x = 4;
+		int y = 4;
+		drawStrip(context, x, y, STRIP_W, STRIP_H);
 
-		var tr = client.textRenderer;
-		int x = 8;
-		int y = 8;
-
-		// ==========================================
-		// 1. TOP HEADER PILL
-		// [SILICONFLOW] | [MC ...] | [HH:MM:SS]
-		// ==========================================
-		String mcVer = dev.doncalvin.m3frametime.version.VersionDetector.get().getRawVersion();
-		long clockSecond = System.currentTimeMillis() / 1000L;
-		if (clockSecond != cachedClockSecond) {
-			cachedClockSecond = clockSecond;
-			cachedTime = LocalTime.now().format(TIME_FMT);
-		}
-		String headerText = "[SILICONFLOW] | [MC " + mcVer + "] | [" + cachedTime + "]";
-		int headerW = tr.getWidth(headerText) + 10;
-		int headerH = 13;
-
-		drawGlassBox(context, x, y, headerW, headerH, 0xFF00E5FF, 0xD00A1118);
-		context.drawText(tr, headerText, x + 5, y + 3, 0xFF00F2FE, false);
-
-		y += headerH + 5;
-
-		// ==========================================
-		// 2. CARD 1: PERFORMANCE (LIVE FPS & FT WAVE)
-		// ==========================================
-		int cardW = 160;
-		int card1H = 82;
-		drawGlassBox(context, x, y, cardW, card1H, 0xFF00E5FF, 0xD00A1118);
-
-		// Row 1: Live FPS
+		M3Config cfg = M3FrametimeMod.config();
+		SpikeMonitor spikes = SpikeMonitor.get();
+		MemoryPressureProbe memory = MemoryPressureProbe.get();
+		SiliconCpuTopology topo = SiliconCpuTopology.get();
 		StringBuilder sb = ScratchPool.get().stringBuilder();
-		sb.append("FPS: ");
-		ScratchPool.appendFixed(sb, (double) liveFps, 1);
-		context.drawText(tr, sb.toString(), x + 6, y + 5, 0xFFFFE082, false);
 
-		SpikeMonitor statusMonitor = SpikeMonitor.get();
-		double statusP95 = statusMonitor.percentileMs(0.95);
-		boolean statusBreach = statusMonitor.lastSpikeAgeMs() >= 0L && statusMonitor.lastSpikeAgeMs() < 5000L || statusP95 >= Math.max(33.3, M3FrametimeMod.config().spikeThresholdMs);
-		String statusTag = statusBreach ? "[STUTTER]" : (liveFps >= 120 ? "[HIGH/STABLE]" : "[STABLE]");
-		context.drawText(tr, statusTag, x + cardW - tr.getWidth(statusTag) - 6, y + 5, statusBreach ? 0xFFF85149 : 0xFF38EF7D, false);
+		int tx = x + 5;
+		int row1 = y + 4;
+		int sparkX = x + STRIP_W - SPARK_BARS - 6;
+		int sparkY = y + 5;
 
-		// Micro FPS bar line under FPS row
-		context.fill(x + 6, y + 15, x + cardW - 6, y + 16, 0x5500E5FF);
-		context.fill(x + 6, y + 15, x + 6 + (int) ((cardW - 12) * Math.min(1.0, liveFps / 1000.0)), y + 16, 0xFF00E5FF);
-
-		// Row 2: Live FT ms [MIN / MAX]
-		int ftLabelW = tr.getWidth("FT: ");
-		context.drawText(tr, "FT: ", x + 6, y + 21, 0xFFFFFFFF, false);
+		sb.append("FPS ").append(liveFps).append("  FT ");
+		ScratchPool.appendFixed(sb, liveFtMs, 1).append("ms");
+		context.drawText(tr, sb.toString(), tx, row1, 0xFFFFE082, false);
 
 		sb.setLength(0);
-		ScratchPool.appendFixed(sb, liveFtMs, 1).append(" ms");
-		context.drawText(tr, sb.toString(), x + 6 + ftLabelW, y + 21, 0xFFFFCA28, false);
+		sb.append("p95 ");
+		ScratchPool.appendFixed(sb, spikes.rollingP95Ms(), 1).append("  p99 ");
+		ScratchPool.appendFixed(sb, spikes.rollingP99Ms(), 1);
+		context.drawText(tr, sb.toString(), tx, row1 + 10, 0xFFCBD5E1, false);
 
-		sb.setLength(0);
-		sb.append("[MIN: ");
-		ScratchPool.appendFixed(sb, minFtMs, 1).append(" / MAX: ");
-		ScratchPool.appendFixed(sb, maxFtMs, 1).append("]");
-		String minMaxStr = sb.toString();
-		context.drawText(tr, minMaxStr, x + cardW - tr.getWidth(minMaxStr) - 6, y + 21, 0xFF90A4AE, false);
+		drawSparkline(context, sparkX, sparkY, SPARK_H);
 
-		SpikeMonitor frameStats = SpikeMonitor.get();
-		sb.setLength(0);
-		sb.append("P95/P99: ");
-		ScratchPool.appendFixed(sb, frameStats.percentileMs(0.95), 1).append("/");
-		ScratchPool.appendFixed(sb, frameStats.percentileMs(0.99), 1).append(" ms · 1%-low: ");
-		double lowMs = frameStats.percentileMs(0.99);
-		ScratchPool.appendFixed(sb, lowMs > 0.0 ? 1000.0 / lowMs : 0.0, 0).append(" FPS");
-		context.drawText(tr, sb.toString(), x + 6, y + 34, 0xFFCBD5E1, false);
+		int row2 = y + 42;
+		context.fill(x + 5, row2 - 3, x + STRIP_W - 5, row2 - 2, 0x55334155);
 
-		// Row 3: Smooth Live Cyan Sine-Wave Curve
-		int waveY = y + 54;
-		int waveH = 14;
-		int waveStartX = x + 6;
-		int waveEndX = x + cardW - 6;
-		boolean useFastMath = M3FrametimeMod.config().useFastMath;
-
-		// Wave background glow track
-		context.fill(waveStartX, waveY - waveH / 2, waveEndX, waveY + waveH / 2, 0x2000E5FF);
-
-		int prevWavePtY = waveY;
-		for (int px = waveStartX; px < waveEndX; px += 2) {
-			float normX = (float) (px - waveStartX) / (float) (waveEndX - waveStartX);
-			float s1 = useFastMath
-				? FastMath.sin((normX * 9.0f) + wavePhase)
-				: (float) Math.sin((normX * 9.0f) + wavePhase);
-			float s2 = useFastMath
-				? FastMath.cos((normX * 4.0f) - wavePhase * 0.7f)
-				: (float) Math.cos((normX * 4.0f) - wavePhase * 0.7f);
-			int curWavePtY = waveY + (int) ((s1 * 0.7f + s2 * 0.3f) * (waveH / 2.2f));
-
-			if (px > waveStartX) {
-				int minY = Math.min(prevWavePtY, curWavePtY);
-				int maxY = Math.max(prevWavePtY, curWavePtY);
-				context.fill(px, minY, Math.min(waveEndX, px + 2), maxY + 1, 0xFF00F2FE);
-			}
-			prevWavePtY = curWavePtY;
-		}
-
-		y += card1H + 5;
-
-		// ==========================================
-		// 3. CARD 2: NETWORK & SYNC (TPS & PING)
-		// ==========================================
-		int card2H = 28;
-		drawGlassBox(context, x, y, cardW, card2H, 0xFFFFA726, 0xD00A1118);
-
-		context.drawText(tr, "SERVER SYNC", x + 6, y + 5, 0xFFFFFFFF, false);
-
-		// Live Ping Query
-		int livePing = -1;
-		if (client.getNetworkHandler() != null && client.player != null) {
-			PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(client.player.getUuid());
-			if (entry != null && entry.getLatency() >= 0) {
-				livePing = entry.getLatency();
-			}
-		}
-
-		sb.setLength(0);
-		if (livePing >= 0) {
-			sb.append("PING: ").append(livePing).append(" ms");
+		RamDiscipline ram = RamDiscipline.get();
+		boolean heapUmaBad = ram.heapVsPhysicalUnhealthy();
+		RamDiscipline.PressureLevel press = ram.pressureLevel();
+		ShaderAutoThrottle.Level throttle = ShaderAutoThrottle.get().level();
+		String profile = cfg.performanceProfile;
+		if (profile == null || profile.isBlank()) {
+			profile = "PLAYABLE";
 		} else {
-			sb.append("PING: unavailable");
+			profile = profile.trim().toUpperCase();
 		}
-		context.drawText(tr, sb.toString(), x + 6, y + 16, 0xFFFFCA28, false);
-
-		y += card2H + 5;
-
-		// ==========================================
-		// 4. CARD 3: MEASURED HARDWARE STATUS
-		// ==========================================
-		int card3H = 58;
-		drawGlassBox(context, x, y, cardW, card3H, 0xFFFFA726, 0xD00A1118);
-
-		context.drawText(tr, "HARDWARE STATUS", x + 6, y + 4, 0xFFFFFFFF, false);
-		context.drawText(tr, "GPU UTIL: unavailable", x + 6, y + 15, 0xFFFFCA28, false);
-		context.drawText(tr, "CPU UTIL: unavailable", x + 6, y + 27, 0xFFFFFFFF, false);
-		TelemetrySnapshot telemetry = TelemetrySnapshot.current();
-		context.drawText(tr, "SHADER API: " + (telemetry.shaderActive() ? "active" : "inactive"), x + 6, y + 39, 0xFF00F2FE, false);
-		context.drawText(tr, "SHADOW PASS: " + (telemetry.shadowPass() ? "active" : "idle"), x + 6, y + 51, 0xFF90A4AE, false);
-
-		y += card3H + 5;
-
-		// ==========================================
-		// 5. BOTTOM ROW: MEMORY CARD + STATUS MATRIX BADGE
-		// ==========================================
-		int memCardW = 145;
-		int bottomCardH = 48;
-		drawGlassBox(context, x, y, memCardW, bottomCardH, 0xFFFFA726, 0xD00A1118);
-
-		context.drawText(tr, "Memory", x + 6, y + 4, 0xFFFFFFFF, false);
-
-		// Live RAM Usage
-		Runtime rt = Runtime.getRuntime();
-		long heapUsed = (rt.totalMemory() - rt.freeMemory()) / (1024L * 1024L);
-		long heapMax = rt.maxMemory() / (1024L * 1024L);
-		double ramGb = heapUsed / 1024.0;
-		double maxGb = heapMax / 1024.0;
 
 		sb.setLength(0);
-		sb.append("RAM USE: ");
-		ScratchPool.appendFixed(sb, ramGb, 1).append(" GB / ");
-		ScratchPool.appendFixed(sb, maxGb, 1).append(" GB");
-		context.drawText(tr, sb.toString(), x + 6, y + 15, 0xFFFFCA28, false);
-		drawProgressBar(context, x + 6, y + 24, memCardW - 12, 3, (float) (heapUsed / (double) Math.max(1L, heapMax)), 0xFFFFA726);
+		sb.append(shortChipName(topo.getChipName())).append(' ').append(topo.getChipTier().name());
+		sb.append("  ").append(profile);
+		context.drawText(tr, trimToWidth(tr, sb.toString(), STRIP_W - 12), tx, row2, 0xFF00F2FE, false);
 
-		MemoryPressureProbe pressure = MemoryPressureProbe.get();
-		String pressureText = pressure.physicalPressureState();
-		context.drawText(tr, pressureText + " free: " + pressure.freePhysicalMb() + "/" + pressure.pressureThresholdMb() + " MB", x + 6, y + 29, pressure.underPressure() ? 0xFFF85149 : 0xFF00F2FE, false);
-
-		// ==========================================
-		// 6. STATUS MATRIX BADGE (NEXT TO MEMORY)
-		// ==========================================
-		int badgeX = x + memCardW + 6;
-		int badgeW = 180;
-		drawGlassBox(context, badgeX, y, badgeW, bottomCardH, 0xFFFFA726, 0xD00A1118);
-
-		// Left: Dot-Matrix LED Grid (5x7)
-		int ledStartX = badgeX + 6;
-		int ledStartY = y + 8;
-		drawLedMatrixIcon(context, ledStartX, ledStartY);
-
-		// Right: Status Text
-		int textStartX = ledStartX + 22;
-		SpikeMonitor monitor = SpikeMonitor.get();
-		boolean recentSpike = monitor.hasSpike() && monitor.lastSpikeAgeMs() >= 0 && monitor.lastSpikeAgeMs() < 5000L;
-		context.drawText(tr, "STATUS: " + (recentSpike ? "STUTTER" : "STABLE"), textStartX, y + 7, recentSpike ? 0xFFF85149 : 0xFF38EF7D, false);
-		context.drawText(tr, "FPS: measured 250ms", textStartX, y + 17, 0xFF38EF7D, false);
-		TelemetrySnapshot current = TelemetrySnapshot.current();
-		StringBuilder pacingText = ScratchPool.get().stringBuilder();
-		pacingText.append("PACING EMA: ");
-		if (current.emaFrametimeMs() > 0.0) {
-			ScratchPool.appendFixed(pacingText, current.emaFrametimeMs(), 1).append(" ms");
+		sb.setLength(0);
+		sb.append("HEAP ").append(memory.heapUsedMb()).append('/').append(memory.heapMaxMb());
+		long umaFree = memory.freePhysicalMb();
+		if (umaFree >= 0L) {
+			sb.append("  UMA ").append(umaFree);
 		} else {
-			pacingText.append("n/a");
+			sb.append("  UMA n/a");
 		}
-		context.drawText(tr, pacingText.toString(), textStartX, y + 27, 0xFF00F2FE, false);
-		context.drawText(tr, recentSpike ? "SPIKE DETECTED" : "NO RECENT SPIKE", textStartX, y + 37, 0xFF90A4AE, false);
-	}
+		if (heapUmaBad) {
+			sb.append(" mismatch");
+		}
+		context.drawText(tr, trimToWidth(tr, sb.toString(), STRIP_W - 12), tx, row2 + 10, heapUmaBad ? 0xFFF85149 : 0xFFFFCA28, false);
 
+		sb.setLength(0);
+		sb.append("JITTER ");
+		ScratchPool.appendFixed(sb, FramePacer.get().jitterPercent(), 1).append('%');
+		StutterErrorCode last = spikes.lastErrorCode();
+		long ageMs = spikes.lastSpikeAgeMs();
+		boolean recent = spikes.hasSpike() && ageMs >= 0L && ageMs < 5000L;
+		sb.append("  ").append(last.getCode());
+		if (spikes.hasSpike()) {
+			sb.append(' ');
+			appendAge(sb, ageMs);
+		}
+		context.drawText(tr, trimToWidth(tr, sb.toString(), STRIP_W - 12), tx, row2 + 20, recent ? 0xFFF85149 : 0xFFCBD5E1, false);
 
-	private static void drawGlassBox(DrawContext context, int x, int y, int width, int height, int borderColor, int bgColor) {
-		// Background box with glassmorphic transparency
-		context.fill(x, y, x + width, y + height, bgColor);
+		sb.setLength(0);
+		sb.append("THRTL ").append(throttle.name()).append("  PRESS ").append(press.name());
+		int throttleColor = throttle == ShaderAutoThrottle.Level.L2 ? 0xFFF85149
+			: (throttle == ShaderAutoThrottle.Level.L1 ? 0xFFFBBF24
+				: (throttle == ShaderAutoThrottle.Level.L0 ? 0xFF00F2FE : 0xFF94A3B8));
+		if (press == RamDiscipline.PressureLevel.PRESSURE) {
+			throttleColor = 0xFFF85149;
+		} else if (press == RamDiscipline.PressureLevel.CAUTION && throttleColor == 0xFF94A3B8) {
+			throttleColor = 0xFFFBBF24;
+		}
+		context.drawText(tr, sb.toString(), tx, row2 + 30, throttleColor, false);
 
-		// Crisp 1px neon border
-		context.fill(x, y, x + width, y + 1, borderColor);
-		context.fill(x, y + height - 1, x + width, y + height, borderColor);
-		context.fill(x, y, x + 1, y + height, borderColor);
-		context.fill(x + width - 1, y, x + width, y + height, borderColor);
-	}
+		int lineY = row2 + 40;
+		if (IrisCompat.isIrisLoaded()) {
+			TelemetrySnapshot snap = TelemetrySnapshot.current();
+			sb.setLength(0);
+			sb.append("SHADER ").append(snap.shaderActive() ? "on" : "off");
+			sb.append("  SHADOW ").append(snap.shadowPass() ? "on" : "idle");
+			context.drawText(tr, sb.toString(), tx, lineY, snap.shaderActive() ? 0xFF00F2FE : 0xFF94A3B8, false);
+			lineY += 10;
+		}
 
-	private static void drawProgressBar(DrawContext context, int x, int y, int width, int height, float progress, int barColor) {
-		// Track background (darker semi-transparent)
-		context.fill(x, y, x + width, y + height, 0x40FFFFFF);
-
-		// Filled active portion
-		int filledW = (int) (width * Math.max(0.0f, Math.min(1.0f, progress)));
-		if (filledW > 0) {
-			context.fill(x, y, x + filledW, y + height, barColor);
+		String sodiumWarn = ChipPower.sodiumAllocatorWarning();
+		if (sodiumWarn != null) {
+			context.drawText(tr, trimToWidth(tr, "SODIUM not SWAP", STRIP_W - 12), tx, lineY, 0xFFFBBF24, false);
 		}
 	}
 
-	private static void drawLedMatrixIcon(DrawContext context, int startX, int startY) {
-		int dotSize = 2;
-		int gap = 1;
-
-		for (int r = 0; r < 7; r++) {
-			for (int c = 0; c < 5; c++) {
-				int px = startX + c * (dotSize + gap);
-				int py = startY + r * (dotSize + gap);
-
-				if ((LED_PATTERN[r] & (1 << c)) != 0) {
-					context.fill(px, py, px + dotSize, py + dotSize, 0xFFFFA726); // Bright Glowing Amber
-				} else {
-					context.fill(px, py, px + dotSize, py + dotSize, 0x30FFA726); // Dim Background LED
-				}
+	private void drawSparkline(DrawContext context, int sparkX, int sparkY, int sparkH) {
+		if (historyCount <= 0) {
+			return;
+		}
+		double scale = 33.3;
+		for (int i = 0; i < historyCount; i++) {
+			int index = (historyIdx - historyCount + i) & (RING_SIZE - 1);
+			double d = ftHistory[index];
+			if (d > scale) {
+				scale = d;
 			}
 		}
+		int bars = Math.min(SPARK_BARS, historyCount);
+		int start = historyCount - bars;
+		for (int i = 0; i < bars; i++) {
+			int index = (historyIdx - historyCount + start + i) & (RING_SIZE - 1);
+			double d = ftHistory[index];
+			int barH = (int) Math.round((d / scale) * sparkH);
+			if (barH < 1) {
+				barH = 1;
+			} else if (barH > sparkH) {
+				barH = sparkH;
+			}
+			int bx = sparkX + i;
+			int by = sparkY + sparkH - barH;
+			int color = d >= 33.3 ? 0xFFF85149 : (d >= 16.6 ? 0xFFFBBF24 : 0xFF38EF7D);
+			context.fill(bx, by, bx + 1, sparkY + sparkH, color);
+		}
+	}
+
+	private static void drawStrip(DrawContext context, int x, int y, int width, int height) {
+		context.fill(x, y, x + width, y + height, 0xF00A1118);
+		context.fill(x, y, x + width, y + 1, 0xFF334155);
+		context.fill(x, y + height - 1, x + width, y + height, 0xFF334155);
+		context.fill(x, y, x + 1, y + height, 0xFF334155);
+		context.fill(x + width - 1, y, x + width, y + height, 0xFF334155);
+	}
+
+	private static String shortChipName(String name) {
+		if (name == null || name.isBlank()) {
+			return "Unknown";
+		}
+		if (name.regionMatches(true, 0, "Apple ", 0, 6)) {
+			return name.substring(6);
+		}
+		return name;
+	}
+
+	private static String trimToWidth(TextRenderer tr, String text, int maxWidth) {
+		if (tr.getWidth(text) <= maxWidth) {
+			return text;
+		}
+		while (text.length() > 1 && tr.getWidth(text) > maxWidth) {
+			text = text.substring(0, text.length() - 1);
+		}
+		return text;
+	}
+
+	private static void appendAge(StringBuilder sb, long ageMs) {
+		if (ageMs < 0L) {
+			sb.append("--");
+			return;
+		}
+		if (ageMs < 1000L) {
+			sb.append(ageMs).append("ms");
+			return;
+		}
+		if (ageMs < 60_000L) {
+			ScratchPool.appendFixed(sb, ageMs / 1000.0, 1).append("s");
+			return;
+		}
+		long sec = ageMs / 1000L;
+		sb.append(sec / 60L).append('m').append(sec % 60L).append('s');
 	}
 }

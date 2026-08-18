@@ -2,6 +2,7 @@ package dev.doncalvin.m3frametime;
 
 import dev.doncalvin.m3frametime.compat.StackCompat;
 import dev.doncalvin.m3frametime.config.M3Config;
+import dev.doncalvin.m3frametime.engine.SiliconCpuTopology;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,10 @@ public final class M3FrametimeMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		// Detect the Apple Silicon chip BEFORE the first config load so tier/RAM-class
+		// scaling is registered when applyChipDefaults() runs — otherwise the persisted
+		// config is derived from placeholder budgets and the per-chip tuning never applies.
+		SiliconCpuTopology.get();
 		M3Config loaded = M3Config.load();
 		config = loaded;
 		String profile = config.performanceProfile == null ? "" : config.performanceProfile.trim();

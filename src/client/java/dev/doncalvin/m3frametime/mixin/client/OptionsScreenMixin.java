@@ -10,17 +10,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Adds a first-class entry point to SiliconFlow without changing vanilla option controls. */
+/** Adds a first-class entry point to SiliconFlow without covering vanilla Done. */
 @Mixin(OptionsScreen.class)
 public abstract class OptionsScreenMixin {
     @Inject(method = "init", at = @At("TAIL"))
     private void m3frametime$addSiliconFlowButton(CallbackInfo ci) {
         OptionsScreen screen = (OptionsScreen) (Object) this;
-        int width = Math.min(200, Math.max(160, screen.width - 20));
-        int x = (screen.width - width) / 2;
-        int y = Math.max(8, screen.height - 64);
+        int width = 160;
+        int x = Math.max(8, screen.width - width - 8);
+        int y = 8;
         ((ScreenAccessor) screen).m3frametime$addDrawableChild(ButtonWidget.builder(
-                Text.literal("SiliconFlow Settings"),
+                Text.translatable("text.m3-frametime.options_button"),
                 button -> MinecraftClient.getInstance().setScreen(new SiliconDashboardScreen(screen)))
             .dimensions(x, y, width, 20)
             .build());

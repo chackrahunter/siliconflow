@@ -53,9 +53,16 @@ public final class StackCompat {
 	}
 
 	/**
-	 * Leftover worker pool stays small to avoid competing with renderer-owned work.
+	 * Leftover worker pool scales by chip tier — stronger chips get more background workers.
+	 * Still conservative with Sodium to avoid competing with mesh work.
 	 */
 	public static int preferredWorkerThreads() {
-		return SODIUM ? 1 : Math.max(1, Math.min(2, Runtime.getRuntime().availableProcessors() / 4));
+		int cores = Runtime.getRuntime().availableProcessors();
+		if (SODIUM) {
+			// With Sodium: allow 2 workers for strong chips, 1 for base
+			return cores >= 12 ? 2 : 1;
+		}
+		// Without Sodium: scale more generously
+		return Math.max(1, Math.min(3, cores / 4));
 	}
 }

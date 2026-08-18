@@ -33,16 +33,16 @@ A launcher/installer may then select the artifact using the detected Minecraft v
 
 ## Prism deployment
 
-`./gradlew build` deploys the remapped JAR to the Prism instance named by `minecraft_version` (currently `1.21.4`). Override it explicitly when testing a matching version-specific artifact:
+`./gradlew build` deploys the remapped JAR to the Prism instance named by `-Pprism_instance` (local default in this repo: `1.21.11`). That folder name is a launcher instance label. The compiled game target remains Minecraft **1.21.4**.
 
 ```bash
-./gradlew build -Pprism_instance=1.21.4
+./gradlew build --console=plain -Pprism_instance=1.21.11
 ```
 
 Do not deploy this artifact to a different Minecraft instance and treat a successful file copy as compatibility evidence.
 
 ## SiliconFlow ownership boundary
 
-The implementation intentionally does not modify Minecraft video or distance settings, VSync/FPS caps, framebuffer scale, shader quality, Sodium allocator or worker settings, JVM arguments, macOS QoS/affinity, or macOS memory policy. Native ARM64 Java, Sodium `SWAP`, shader compatibility, Retina/framebuffer scale, display mode, and heap/collector choices remain user-controlled A/B-test variables. Iris shaders on ARM macOS remain an upstream unsupported/problematic boundary; SiliconFlow reports environment evidence without patching shader or driver behavior.
+The implementation does not replace Sodium terrain meshing, Lithium ticking, or the Iris shader pipeline, and it does not silently rewrite `-Xmx`, Sodium `SWAP`, Iris pack settings, VSync/FPS caps, or macOS memory policy. Native ARM64 Java, Sodium `SWAP`, shader pack quality, Retina/framebuffer scale, display mode, and heap/collector choices remain user-controlled.
 
-SiliconFlow-owned behavior is limited to bounded local diagnostics, opt-in recorder/HUD output, immutable telemetry publication, atomic config persistence, and pressure-aware trimming of its own scratch state.
+SiliconFlow-owned behavior is mixin-gated visual workload (entity/particle/HUD culls and related skips), RAM-class budget caps, session shader auto-throttle of those SiliconFlow flags only, bounded local diagnostics (F7/F8), opt-in recorder output, atomic config persistence, and pressure-aware trimming of its own scratch state. It never calls `System.gc()`.

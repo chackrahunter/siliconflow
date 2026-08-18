@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Discussions
+    url: https://github.com/chackrahunter/siliconflow/discussions
+    about: Ask questions and share setup experiences.

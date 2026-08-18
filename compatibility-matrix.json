@@ -5,9 +5,14 @@
     "minecraft": "1.21.4",
     "status": "built-and-deployed",
     "launchVerified": false,
-    "artifact": "build/libs/siliconflow-1.0.37+1.21.4.jar"
+    "artifact": "build/libs/siliconflow-1.0.38+1.21.4.jar"
   },
   "targets": [
-    {"minecraft": "1.21.4", "status": "implemented", "sourceSet": "main+client", "notes": "Current implementation and exact Fabric metadata."}
+    {
+      "minecraft": "1.21.4",
+      "status": "implemented",
+      "sourceSet": "main+client",
+      "notes": "Current implementation and exact Fabric metadata."
+    }
   ]
 }

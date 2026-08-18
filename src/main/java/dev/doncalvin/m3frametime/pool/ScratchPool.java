@@ -1,41 +1,19 @@
 package dev.doncalvin.m3frametime.pool;
 
-import net.minecraft.util.math.BlockPos;
-import org.joml.Matrix4f;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 /**
- * Thread-local scratch for hot paths owned by this mod. Avoids ephemeral JOML/BlockPos/String churn.
- * Capacity is capped — never grow unbounded byte[] / StringBuilder under RAM pressure.
+ * Thread-local scratch for hot paths owned by this mod.
+ * Capacity is capped — never grow unbounded StringBuilders under RAM pressure.
  */
 public final class ScratchPool {
 	private static final ThreadLocal<ScratchPool> TL = ThreadLocal.withInitial(ScratchPool::new);
 	private static final int SB_INITIAL = 160;
 	private static final int SB_SOFT_CAP = 256;
-	private static final int SOUND_BYTES = 4096;
 	private static final long[] POW10 = {
 		1L, 10L, 100L, 1_000L, 10_000L, 100_000L, 1_000_000L, 10_000_000L, 100_000_000L
 	};
 
-	public final BlockPos.Mutable mutablePos = new BlockPos.Mutable();
-	public final Vector3f vec3f = new Vector3f();
-	public final Vector3f vec3fAux = new Vector3f();
-	public final Vector4f vec4f = new Vector4f();
-	public final Quaternionf quaternionf = new Quaternionf();
-	public final Matrix4f matrix4f = new Matrix4f();
-	public final Matrix4f matrix4fAux = new Matrix4f();
-	public final float[] mat16 = new float[16];
-	public final double[] vec3d = new double[3];
 	public final StringBuilder stringBuilder = new StringBuilder(SB_INITIAL);
 	public final StringBuilder logBuilder = new StringBuilder(SB_INITIAL);
-	/** Fixed-size; never reallocated. */
-	public final byte[] soundScratch = new byte[SOUND_BYTES];
-	public final ByteBuffer soundDirect = ByteBuffer.allocateDirect(SOUND_BYTES).order(ByteOrder.nativeOrder());
 
 	private ScratchPool() {}
 
@@ -47,13 +25,6 @@ public final class ScratchPool {
 	public void releaseEphemeral() {
 		shrinkBuilder(stringBuilder);
 		shrinkBuilder(logBuilder);
-		soundDirect.clear();
-		quaternionf.identity();
-		matrix4f.identity();
-		matrix4fAux.identity();
-		vec3f.zero();
-		vec3fAux.zero();
-		vec4f.zero();
 	}
 
 	/** Releases only the caller's pool; never mutates another thread's scratch state. */
@@ -77,11 +48,6 @@ public final class ScratchPool {
 	public StringBuilder logBuilder() {
 		logBuilder.setLength(0);
 		return logBuilder;
-	}
-
-	public ByteBuffer soundDirectCleared() {
-		soundDirect.clear();
-		return soundDirect;
 	}
 
 	/** Append a fixed-point decimal without boxing or String.format. */
@@ -117,13 +83,5 @@ public final class ScratchPool {
 			sb.append((char) ('0' + (int) digit));
 		}
 		return sb;
-	}
-
-	public static StringBuilder appendLong(StringBuilder sb, long value) {
-		return sb.append(value);
-	}
-
-	public static StringBuilder appendInt(StringBuilder sb, int value) {
-		return sb.append(value);
 	}
 }

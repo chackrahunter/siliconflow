@@ -1,0 +1,33 @@
+name: Bug report
+description: Report a reproducible SiliconFlow problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Include only non-sensitive logs and diagnostics.
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft version
+      placeholder: 1.21.4
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Mac, Java, and Fabric environment
+      placeholder: M3 / 8 GB / macOS version / Java 21 native / Fabric Loader
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, mod list, profile, and configuration
+      description: Remove account names, world paths, server addresses, and other private data.

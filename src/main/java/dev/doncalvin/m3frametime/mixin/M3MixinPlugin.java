@@ -36,7 +36,24 @@ public final class M3MixinPlugin implements IMixinConfigPlugin {
 			);
 			return false;
 		}
+		if (isSoundMixin(mixinClassName) && hasSoundConflict()) {
+			M3FrametimeMod.LOGGER.info("Skipping {} because Sound Physics or Voice Chat is loaded", mixinClassName);
+			return false;
+		}
 		return true;
+	}
+
+	private static boolean isSoundMixin(String mixinClassName) {
+		return mixinClassName != null && mixinClassName.contains("SoundSystem");
+	}
+
+	private static boolean hasSoundConflict() {
+		FabricLoader loader = FabricLoader.getInstance();
+		return loader.isModLoaded("soundphysics")
+			|| loader.isModLoaded("sound_physics")
+			|| loader.isModLoaded("sound_physics_remastered")
+			|| loader.isModLoaded("voicechat")
+			|| loader.isModLoaded("simple-voice-chat");
 	}
 
 	@Override

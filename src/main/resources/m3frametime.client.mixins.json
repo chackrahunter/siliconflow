@@ -9,9 +9,38 @@
 		"MinecraftClientMixin",
 		"OptionsScreenMixin",
 		"ScreenAccessor",
-		"VanillaDebugHudMixin"
+		"VanillaDebugHudMixin",
+		"BannerPatternMixin",
+		"BeaconBlockEntityRendererMixin",
+		"BlockEntityRenderDispatcherMixin",
+		"BossBarHudMixin",
+		"ClientWorldMixin",
+		"CloudRendererMixin",
+		"EntityRenderDispatcherMixin",
+		"EntityRendererMixin",
+		"ExperienceOrbEntityRendererMixin",
+		"GameRendererMixin",
+		"InGameHudMixin",
+		"InGameOverlayRendererMixin",
+		"ItemEntityRendererMixin",
+		"ItemRendererGlintMixin",
+		"ItemStackMixin",
+		"LightmapTextureManagerMixin",
+		"LivingEntityLimbMixin",
+		"LivingEntityPotionSwirlMixin",
+		"LivingEntityRendererMixin",
+		"ParticleManagerAccessor",
+		"ParticleManagerMixin",
+		"SignTextMixin",
+		"SkyRenderingMixin",
+		"SoundSystemMixin",
+		"SubtitlesHudMixin",
+		"ToastManagerMixin",
+		"WeatherRenderingMixin",
+		"WorldBorderRenderingMixin",
+		"WorldRendererSkipMixin"
 	],
 	"injectors": {
-		"defaultRequire": 1
+		"defaultRequire": 0
 	}
 }

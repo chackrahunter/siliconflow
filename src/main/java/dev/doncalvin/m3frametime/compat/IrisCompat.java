@@ -14,14 +14,17 @@ import java.lang.reflect.Method;
 public final class IrisCompat {
 	private static final boolean IRIS_LOADED = detectIris();
 
-	private static Object irisApiInstance;
-	private static MethodHandle isShaderPackInUseHandle;
-	private static MethodHandle isRenderingShadowPassHandle;
-	private static boolean initialized;
+	// Published from the synchronized initReflection() and read from render/tick/worker threads.
+	private static volatile Object irisApiInstance;
+	private static volatile MethodHandle isShaderPackInUseHandle;
+	private static volatile MethodHandle isRenderingShadowPassHandle;
+	private static volatile boolean initialized;
 
-	// Cached state to avoid per-frame reflection lookup
-	private static boolean cachedShaderActive;
-	private static long lastShaderCheckNanos;
+	// Cached state to avoid per-frame reflection lookup (read across threads).
+	private static volatile boolean cachedShaderActive;
+	private static volatile long lastShaderCheckNanos;
+	private static volatile boolean cachedInShadowPass;
+	private static volatile boolean shadowPassSinceTick;
 
 	private IrisCompat() {}
 
@@ -84,8 +87,11 @@ public final class IrisCompat {
 		return false;
 	}
 
-	/** Returns true when Iris is currently rendering the shadow map pass (fast MethodHandle). */
-	public static boolean isShadowPass() {
+	/**
+	 * Live Iris shadow-pass query. Unlike {@link #isShadowPass()}, this is not sticky
+	 * across the rest of the frame — use it to latch {@link #setShadowPass(boolean)}.
+	 */
+	public static boolean queryLiveShadowPass() {
 		if (!IRIS_LOADED) {
 			return false;
 		}
@@ -99,5 +105,46 @@ public final class IrisCompat {
 			}
 		}
 		return false;
+	}
+
+	/** Returns true when Iris is currently rendering the shadow map pass (fast MethodHandle). */
+	public static boolean isShadowPass() {
+		if (cachedInShadowPass || shadowPassSinceTick) {
+			return true;
+		}
+		if (!IRIS_LOADED) {
+			return false;
+		}
+		if (!initialized) {
+			initReflection();
+		}
+		if (irisApiInstance != null && isRenderingShadowPassHandle != null) {
+			try {
+				boolean live = (boolean) isRenderingShadowPassHandle.invoke(irisApiInstance);
+				if (live) {
+					cachedInShadowPass = true;
+					shadowPassSinceTick = true;
+				}
+				return live;
+			} catch (Throwable ignored) {
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Mixin-owned latch for the Iris shadow pass. Querying Iris at {@code MinecraftClient.render}
+	 * RETURN is too late — cache the in-pass flag so GPU_004 can still attribute the frame.
+	 */
+	public static void setShadowPass(boolean inPass) {
+		cachedInShadowPass = inPass;
+		if (inPass) {
+			shadowPassSinceTick = true;
+		}
+	}
+
+	/** Drop the per-frame shadow latch after SpikeMonitor has consumed the previous frame. */
+	public static void onClientTick() {
+		shadowPassSinceTick = cachedInShadowPass;
 	}
 }

@@ -2,8 +2,6 @@ package dev.doncalvin.m3frametime.engine;
 
 import dev.doncalvin.m3frametime.M3FrametimeMod;
 
-
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Locale;
@@ -25,6 +23,7 @@ public final class SiliconCpuTopology {
 	private final ChipTier chipTier;
 	private final int chipGeneration;
 	private final int gpuCoreCount;
+	private final long totalPhysicalMemoryMb;
 
 	private SiliconCpuTopology() {
 		this.totalCores = Runtime.getRuntime().availableProcessors();
@@ -35,6 +34,8 @@ public final class SiliconCpuTopology {
 		}
 		int sysctlP = sysctlInt("hw.perflevel0.physicalcpu");
 		int sysctlE = sysctlInt("hw.perflevel1.physicalcpu");
+		long totalMemBytes = sysctlLong("hw.memsize");
+		this.totalPhysicalMemoryMb = totalMemBytes > 0 ? totalMemBytes / (1024L * 1024L) : -1;
 
 		int parsedGen = parseGeneration(model);
 		ChipTier parsedTier = parseTier(model);
@@ -52,7 +53,6 @@ public final class SiliconCpuTopology {
 				this.estimatedPCores = sysctlP;
 				this.estimatedECores = sysctlE;
 			} else {
-				// Do not infer P/E placement from chip tier or logical processor count.
 				this.estimatedPCores = -1;
 				this.estimatedECores = -1;
 			}
@@ -64,7 +64,18 @@ public final class SiliconCpuTopology {
 			this.estimatedPCores = -1;
 			this.estimatedECores = -1;
 		}
-		SiliconChipInfo.register(this.chipTier, getMaxParticles(), getEntityCullDistance());
+		SiliconChipInfo.register(this.chipTier);
+		RamClassPolicy.registerPhysicalMemoryMb(this.totalPhysicalMemoryMb);
+
+		M3FrametimeMod.LOGGER.info(
+			"SiliconCpuTopology: {} (Tier={}, Gen=M{}, P={}cores, E={}cores, GPU={}cores, RAM={}MB class={}GB)",
+			chipName, chipTier, chipGeneration,
+			estimatedPCores > 0 ? estimatedPCores : "?",
+			estimatedECores > 0 ? estimatedECores : "?",
+			gpuCoreCount,
+			totalPhysicalMemoryMb > 0 ? totalPhysicalMemoryMb : "?",
+			getRamClassGb()
+		);
 	}
 
 	public static SiliconCpuTopology get() {
@@ -99,27 +110,24 @@ public final class SiliconCpuTopology {
 		return gpuCoreCount;
 	}
 
-	public int getSodiumWorkerThreads() {
-		// A conservative bound; this is only used for an explicit Sodium opt-in.
-		return Math.max(1, Math.min(8, totalCores - 1));
+	public long getTotalPhysicalMemoryMb() {
+		return totalPhysicalMemoryMb;
 	}
 
-	public int getMaxParticles() {
-		switch (chipTier) {
-			case MAX: return 384;
-			case ULTRA: return 512;
-			case PRO: return 256;
-			default: return 160;
-		}
+	public RamClassPolicy.RamClass getRamClass() {
+		return RamClassPolicy.classify(totalPhysicalMemoryMb);
 	}
 
-	public double getEntityCullDistance() {
-		switch (chipTier) {
-			case MAX: return 112.0;
-			case ULTRA: return 128.0;
-			case PRO: return 88.0;
-			default: return 72.0;
+	public int getRamClassGb() {
+		if (totalPhysicalMemoryMb <= 0L) {
+			return 0;
 		}
+		return getRamClass().nominalGb();
+	}
+
+	/** Heap vs physical UMA mismatch — see {@link RamClassPolicy#heapVsPhysicalUnhealthy()}. */
+	public boolean heapVsPhysicalUnhealthy() {
+		return RamClassPolicy.heapVsPhysicalUnhealthy();
 	}
 
 	private static int parseGeneration(String model) {
@@ -129,6 +137,7 @@ public final class SiliconCpuTopology {
 		if (m.contains("m2")) return 2;
 		if (m.contains("m3")) return 3;
 		if (m.contains("m4")) return 4;
+		if (m.contains("m5")) return 5;
 		return 0;
 	}
 
@@ -165,6 +174,11 @@ public final class SiliconCpuTopology {
 		if (m.contains("m4 pro")) return 20;
 		if (m.contains("m4")) return 10;
 
+		if (m.contains("m5 ultra")) return 80;
+		if (m.contains("m5 max")) return 40;
+		if (m.contains("m5 pro")) return 20;
+		if (m.contains("m5")) return 10;
+
 		return 10;
 	}
 
@@ -175,12 +189,63 @@ public final class SiliconCpuTopology {
 		return ChipTier.ULTRA;
 	}
 
+	/**
+	 * Query a sysctl string value via ProcessBuilder.
+	 * Called only once at init — never in a render hot path.
+	 */
 	private static String sysctlString(String key) {
-		return null; // Render-safe: no subprocess/file I/O; JVM processor count is the fallback.
+		if (!isMacOS()) return null;
+		Process proc = null;
+		try {
+			ProcessBuilder pb = new ProcessBuilder("sysctl", "-n", key);
+			pb.redirectErrorStream(true);
+			proc = pb.start();
+			String result;
+			try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+				result = reader.readLine();
+			}
+			boolean finished = proc.waitFor(3, TimeUnit.SECONDS);
+			if (!finished) {
+				return null;
+			}
+			if (proc.exitValue() != 0 || result == null || result.isBlank()) {
+				return null;
+			}
+			return result.trim();
+		} catch (Throwable t) {
+			M3FrametimeMod.LOGGER.debug("sysctl query failed for {}: {}", key, t.toString());
+			return null;
+		} finally {
+			if (proc != null && proc.isAlive()) {
+				proc.destroyForcibly();
+			}
+		}
 	}
 
+	/** Query a sysctl integer value. Returns -1 on failure. */
 	private static int sysctlInt(String key) {
-		return -1;
+		String val = sysctlString(key);
+		if (val == null) return -1;
+		try {
+			return Integer.parseInt(val.trim());
+		} catch (NumberFormatException e) {
+			return -1;
+		}
 	}
 
+	/** Query a sysctl long value. Returns -1 on failure. */
+	private static long sysctlLong(String key) {
+		String val = sysctlString(key);
+		if (val == null) return -1;
+		try {
+			return Long.parseLong(val.trim());
+		} catch (NumberFormatException e) {
+			return -1;
+		}
+	}
+
+	private static boolean isMacOS() {
+		String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+		return os.contains("mac") || os.contains("darwin");
+	}
 }

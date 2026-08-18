@@ -3,17 +3,25 @@ package dev.doncalvin.m3frametime.pacing;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * Sub-millisecond frame delta tracker with EMA smoothing and optional pace-to-refresh.
- * Does not replace Minecraft's main loop — measures and optionally sleeps after swap.
+ * Sub-millisecond frame delta tracker with EMA smoothing, variance tracking,
+ * and optional pace-to-refresh. Does not replace Minecraft's main loop.
  */
 public final class FramePacer {
 	private static final FramePacer INSTANCE = new FramePacer();
+	private static final int VARIANCE_WINDOW = 16;
 
 	private long lastFrameNanos;
 	private long lastDeltaNanos;
 	private double emaDeltaNanos;
 	private long targetFrameNanos = 16_666_666L; // ~60 Hz default
 	private boolean hasSample;
+
+	// Frame-time variance tracking for jitter detection
+	private final long[] recentDeltas = new long[VARIANCE_WINDOW];
+	private int varianceIdx;
+	private int varianceCount;
+	private double cachedVariance;
+	private long lastVarianceUpdateFrame;
 
 	private FramePacer() {}
 
@@ -56,6 +64,11 @@ public final class FramePacer {
 			alpha = 0.12;
 		}
 		emaDeltaNanos = emaDeltaNanos * (1.0 - alpha) + lastDeltaNanos * alpha;
+
+		// Track recent frame deltas for variance calculation
+		recentDeltas[varianceIdx & (VARIANCE_WINDOW - 1)] = lastDeltaNanos;
+		varianceIdx++;
+		if (varianceCount < VARIANCE_WINDOW) varianceCount++;
 	}
 
 	/**
@@ -74,8 +87,6 @@ public final class FramePacer {
 		}
 		long sleepNanos = remaining - 200_000L;
 		if (sleepNanos > 0) {
-			long millis = sleepNanos / 1_000_000L;
-			int nanos = (int) (sleepNanos % 1_000_000L);
 			LockSupport.parkNanos(sleepNanos);
 			if (Thread.interrupted()) {
 				return;
@@ -100,5 +111,27 @@ public final class FramePacer {
 
 	public double emaDeltaMs() {
 		return emaDeltaNanos / 1_000_000.0;
+	}
+
+	/**
+	 * Frame-time variance in nanoseconds squared.
+	 * High variance indicates jitter / micro-stutter even if average FPS is acceptable.
+	 */
+	public double frametimeVariance() {
+		if (varianceCount < 4) return 0.0;
+		double mean = emaDeltaNanos;
+		double sumSq = 0.0;
+		for (int i = 0; i < varianceCount; i++) {
+			double diff = recentDeltas[i] - mean;
+			sumSq += diff * diff;
+		}
+		return sumSq / varianceCount;
+	}
+
+	/** Coefficient of variation (stddev / mean) as a percentage. >15% = notable jitter. */
+	public double jitterPercent() {
+		if (emaDeltaNanos <= 0.0) return 0.0;
+		double variance = frametimeVariance();
+		return (Math.sqrt(variance) / emaDeltaNanos) * 100.0;
 	}
 }
